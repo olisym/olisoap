@@ -11,6 +11,7 @@ import { RecipeEditor } from './pages/RecipeEditor'
 import { RecipeList } from './pages/RecipeList'
 import { Shopping } from './pages/Shopping'
 import { SiedenRun, SiedenStart } from './pages/Sieden'
+import { SyncPage } from './pages/SyncPage'
 import { Tools } from './pages/Tools'
 import { BatchWorksheet, Worksheet } from './pages/Worksheet'
 
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/korrektur/:id" element={<Correction />} />
           <Route path="/fette" element={<FatList />} />
           <Route path="/daten" element={<DataPage />} />
+          <Route path="/sync" element={<SyncPage />} />
         </Routes>
       </AppShell>
     </HashRouter>

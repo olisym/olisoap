@@ -1,6 +1,7 @@
-import { BookOpen, Ellipsis, FlaskConical, Layers, LayoutDashboard, Moon, Package, ShoppingCart, Sun, Wrench, X, type LucideIcon } from 'lucide-react'
+import { BookOpen, Cloud, CloudOff, Ellipsis, RefreshCw, FlaskConical, Layers, LayoutDashboard, Moon, Package, ShoppingCart, Sun, Wrench, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { useSyncStatus } from '../pages/SyncPage'
 
 interface NavItem {
   to: string
@@ -34,6 +35,20 @@ function useTheme(): [Theme, () => void] {
     }
   }, [theme])
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
+}
+
+/** Sync-Zustand unten in der Leiste: auf einen Blick, ob alles gesichert ist. */
+function SyncIndicator() {
+  const s = useSyncStatus()
+  const label = { off: 'Sync aus', idle: 'Synchron', syncing: 'Gleicht ab', offline: 'Offline', error: 'Sync-Fehler' }[s.phase]
+  const Icon = s.phase === 'syncing' ? RefreshCw : s.phase === 'idle' ? Cloud : CloudOff
+  const color = s.phase === 'idle' ? 'text-ok' : s.phase === 'syncing' ? 'text-accent' : s.phase === 'off' ? 'text-muted' : 'text-warn'
+  return (
+    <NavLink to="/sync" className={`mt-auto flex flex-col items-center gap-1 text-[0.65rem] ${color}`} title={s.lastSync ? `Zuletzt: ${new Date(s.lastSync).toLocaleString('de-DE')}` : label}>
+      <Icon size={18} className={s.phase === 'syncing' ? 'animate-spin' : ''} aria-hidden />
+      {label}
+    </NavLink>
+  )
 }
 
 function Logo() {
@@ -73,7 +88,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </NavLink>
         ))}
-        <button className="btn-ghost mt-auto" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Helles Design' : 'Dunkles Design'}>
+        <SyncIndicator />
+        <button className="btn-ghost" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Helles Design' : 'Dunkles Design'}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </nav>
