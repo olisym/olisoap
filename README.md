@@ -4,8 +4,16 @@ Werkstatt-Software für Heimseifensieder: Rezepte entwerfen und berechnen, Arbei
 Später kommen Lager, Kosten, Chargen und ein Reste-Optimierer dazu. Leitlinie: **evidenzbasiert, ohne Nonsens.**
 Jede Zutat braucht einen Grund.
 
-## Stand (v0.4)
+## Stand (v0.5)
 
+- **Übersicht** nach Anliegen: Sieden, Rezepte, Vorrat, Einkauf, Entwickeln, dazu Reifeprozess, Hinweise und „Was kann ich sieden?“
+- **Geführtes Sieden**: Rezept wählen, Menge oder Stückzahl, Vorrats-Check, Siede-Modus mit großen Zahlen,
+  Abhaken und Live-Korrektur bei Ist-Abweichungen, Charge anlegen
+- **Einkauf**: Bedarf aus geplanten Suden, günstigste aktuelle Packung, Einkaufsliste mit Shop-Links,
+  „bestellt“ und Wareneingang direkt ins Lager
+- **Vorrat** als Übersicht mit Füllstand, MHD und Nachbestellen per Klick
+- Dunkles Instrumententafel-Design (helles wählbar), Navigationsleiste bzw. untere Leiste auf dem Handy,
+  Touch-Ziele ab 44 px
 - **Grundseifen und Varianten**: Körper-, Haar- und Rasierseife als Grundseifen, Varianten zeigen ihre Unterschiede zur Grundseife
 - **Laugenrechner** (NaOH, KOH oder Mischlauge, Reinheit, Überfettung, drei Wassermodi), Säuren wie Zitronensäure werden
   automatisch verrechnet, Wasser aus flüssigen Zusätzen wird vom Gesamtwasser abgezogen

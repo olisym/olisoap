@@ -1,5 +1,5 @@
 import type { RecipeResult } from './calc'
-import { materialKey, materialPrice, type Inventory, type Lot, type MaterialKey } from './inventory'
+import { materialKey, materialPrice, materialStock, type Inventory, type Lot, type MaterialKey } from './inventory'
 
 // Chargen: eine gesiedete Seife. Verbrauch wird aus den Gebinden abgebucht (zuerst, was zuerst abläuft).
 
@@ -124,4 +124,30 @@ export function nextBatchNumber(date: string, existing: string[]): string {
   const prefix = date.slice(2).replace(/-/g, '')
   const used = existing.filter((n) => n.startsWith(`${prefix}-`)).map((n) => Number(n.split('-')[1]) || 0)
   return `${prefix}-${Math.max(0, ...used) + 1}`
+}
+
+export interface Feasibility {
+  /** Wie viele Ansätze dieser Größe der Bestand hergibt. */
+  count: number
+  /** Zutat, die zuerst ausgeht. */
+  limiting?: Need
+  /** Was für einen Ansatz fehlt. */
+  missing: Need[]
+}
+
+/** Reicht der Bestand? Zutaten ohne jedes Gebinde im Lager zählen als fehlend. */
+export function feasibility(inv: Inventory, needs: Need[]): Feasibility {
+  let count = Infinity
+  let limiting: Need | undefined
+  const missing: Need[] = []
+  for (const need of needs) {
+    const stock = materialStock(inv, need.key)
+    const n = Math.floor(stock / need.grams + 1e-9)
+    if (n < count) {
+      count = n
+      limiting = need
+    }
+    if (stock < need.grams) missing.push({ ...need, grams: need.grams - stock })
+  }
+  return { count: Number.isFinite(count) ? count : 0, limiting, missing }
 }

@@ -2,7 +2,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import { addDays, needsOf, nextBatchNumber, planConsumption, type Deduction, type Need, type Weighing } from './core/batch'
 import { calculate } from './core/calc'
 import { barCount } from './core/cost'
-import type { Inventory, Lot, Product, Purchase } from './core/inventory'
+import { packageGrams, pricePerKg, type Inventory, type Lot, type Product, type Purchase } from './core/inventory'
 import type { RecipeInput } from './core/types'
 import { TEMPLATES, type TemplateFamily } from './data/templates'
 
@@ -21,6 +21,23 @@ export interface Recipe {
   parentId?: string
   createdAt: string
   updatedAt: string
+}
+
+export type OrderStatus = 'open' | 'ordered' | 'received'
+
+/** Eine Zeile der Einkaufsliste. Beim Wareneingang wird daraus ein Einkauf und ein Gebinde im Lager. */
+export interface OrderItem {
+  id: string
+  productId: string
+  packages: number
+  /** Erwarteter Preis pro Packung (aus dem letzten Einkauf), beim Wareneingang korrigierbar. */
+  unitPrice?: number
+  /** Wofür, z. B. "Körperseife ×2". */
+  reason?: string
+  status: OrderStatus
+  createdAt: string
+  orderedAt?: string
+  receivedAt?: string
 }
 
 export interface Outflow {
@@ -66,6 +83,7 @@ export const db = new Dexie('olisoap') as Dexie & {
   purchases: EntityTable<Purchase, 'id'>
   lots: EntityTable<Lot, 'id'>
   batches: EntityTable<Batch, 'id'>
+  orderItems: EntityTable<OrderItem, 'id'>
 }
 
 db.version(1).stores({
@@ -95,6 +113,15 @@ export function familyRecipes(family: TemplateFamily): Recipe[] {
   return [base, ...variants]
 }
 
+db.version(4).stores({
+  recipes: 'id, name, updatedAt',
+  products: 'id, name, category, sku',
+  purchases: 'id, productId, date',
+  lots: 'id, productId',
+  batches: 'id, recipeId, date, number',
+  orderItems: 'id, productId, status',
+})
+
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
 })
@@ -116,6 +143,8 @@ export interface BatchOptions {
   date: string
   cureWeeks: number
   deductStock: boolean
+  /** Weitere Angaben aus dem Siedeprotokoll (Temperaturen, Notizen). */
+  extra?: Pick<Partial<Batch>, 'lyeTemp' | 'fatTemp' | 'notes'>
 }
 
 /** Siedet ein Rezept: legt die Charge an und bucht auf Wunsch den Verbrauch aus dem Lager ab. */
@@ -138,6 +167,7 @@ export async function createBatch(recipe: Recipe, opts: BatchOptions): Promise<B
       unpriced: plan.unpriced,
       weighings: [],
       outflows: [],
+      ...opts.extra,
     }
     if (opts.deductStock)
       for (const d of plan.deductions) await db.lots.where('id').equals(d.lotId).modify((l) => void (l.gramsLeft -= d.grams))
@@ -155,26 +185,52 @@ export async function deleteBatch(batch: Batch, restoreStock: boolean): Promise<
   })
 }
 
+/** Wareneingang: Einkauf in die Preishistorie, Ware als Gebinde ins Lager. */
+export async function receiveOrderItem(item: OrderItem, unitPrice: number | undefined, bestBefore?: string): Promise<void> {
+  await db.transaction('rw', [db.orderItems, db.products, db.purchases, db.lots], async () => {
+    const product = await db.products.get(item.productId)
+    if (!product) throw new Error('Artikel nicht gefunden')
+    const today = new Date().toISOString().slice(0, 10)
+    if (unitPrice !== undefined)
+      await db.purchases.add({ id: crypto.randomUUID(), productId: product.id, date: today, quantity: item.packages, unitPrice })
+    const grams = packageGrams(product)
+    if (grams)
+      for (let i = 0; i < item.packages; i++)
+        await db.lots.add({
+          id: crypto.randomUUID(),
+          productId: product.id,
+          purchasedAt: today,
+          gramsInitial: grams,
+          gramsLeft: grams,
+          pricePerKg: unitPrice !== undefined ? pricePerKg(product, unitPrice) : undefined,
+          bestBefore,
+        })
+    await db.orderItems.update(item.id, { status: 'received', receivedAt: today, unitPrice })
+  })
+}
+
 export interface Backup {
   app: 'olisoap'
-  version: 3
+  version: 4
   exportedAt: string
   recipes: Recipe[]
   products: Product[]
   purchases: Purchase[]
   lots: Lot[]
   batches: Batch[]
+  orderItems: OrderItem[]
 }
 
-const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches'] as const
+const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches', 'orderItems'] as const
 
 export async function exportBackup(): Promise<Backup> {
   return {
     app: 'olisoap',
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     recipes: await db.recipes.toArray(),
     batches: await db.batches.toArray(),
+    orderItems: await db.orderItems.toArray(),
     ...(await loadInventory()),
   }
 }
@@ -183,7 +239,7 @@ export async function exportBackup(): Promise<Backup> {
 export async function importBackup(data: unknown): Promise<Record<(typeof TABLES)[number], number>> {
   const backup = data as Partial<Backup>
   if (backup?.app !== 'olisoap' || !Array.isArray(backup.recipes)) throw new Error('Keine gültige olisoap-Sicherung.')
-  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0 }
+  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0, orderItems: 0 }
   await db.transaction('rw', TABLES, async () => {
     for (const t of TABLES) {
       const rows = (backup[t] ?? []) as never[]

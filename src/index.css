@@ -1,70 +1,122 @@
 @import 'tailwindcss';
 
+/* Dunkles Instrumententafel-Design als Standard, helles Design wählbar. `dark:` folgt dem gewählten Design. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 @theme {
-  --color-bg: #f7f6f3;
-  --color-surface: #ffffff;
-  --color-ink: #1c1b19;
-  --color-muted: #6b6862;
-  --color-line: #e4e1da;
-  --color-track: #ece9e2;
-  --color-accent: #2f6f5e;
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-bg: #0a0f15;
+  --color-surface: #111922;
+  --color-surface-2: #17212c;
+  --color-ink: #e6edf3;
+  --color-muted: #8d9cab;
+  --color-line: #223040;
+  --color-track: #1c2834;
+  --color-accent: #4fd1c5;
+  --color-accent-ink: #032420;
+  --color-ok: #4ade80;
+  --color-warn: #f5b84a;
+  --color-bad: #f87171;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+  --radius-panel: 1rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #161614;
-    --color-surface: #1f1f1c;
-    --color-ink: #ecebe7;
-    --color-muted: #a19e96;
-    --color-line: #34332f;
-    --color-track: #2b2a27;
-    --color-accent: #6fc2a8;
-  }
+[data-theme='light'] {
+  --color-bg: #f3f5f7;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef2f5;
+  --color-ink: #111a22;
+  --color-muted: #5b6b7a;
+  --color-line: #dbe2e8;
+  --color-track: #e6ebf0;
+  --color-accent: #0f7f75;
+  --color-accent-ink: #ffffff;
+  --color-ok: #15803d;
+  --color-warn: #b45309;
+  --color-bad: #dc2626;
+}
+
+html {
+  color-scheme: dark;
+}
+html[data-theme='light'] {
+  color-scheme: light;
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 @layer components {
+  /* Flächen */
   .card {
-    @apply rounded-lg border border-line bg-surface p-4;
+    @apply rounded-[var(--radius-panel)] border border-line bg-surface p-5;
   }
+  .panel-glow {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 25%, transparent), 0 8px 30px -12px color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  /* Kleine Instrumenten-Beschriftung über Werten und Abschnitten */
+  .eyebrow {
+    @apply text-[0.7rem] font-semibold tracking-[0.14em] text-muted uppercase;
+  }
+  .kpi {
+    @apply text-3xl font-semibold tracking-tight tabular-nums;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-medium whitespace-nowrap;
+  }
+
+  /* Eingaben: mindestens 40 px hoch, gut treffbar */
   .field {
-    @apply rounded-md border border-line bg-surface px-2 py-1.5 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20;
+    @apply min-h-10 rounded-lg border border-line bg-surface-2 px-3 py-2 text-ink outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/25;
   }
   .field-inline {
     @apply -ml-1 self-start bg-transparent text-sm text-muted outline-none;
   }
   .label {
-    @apply flex flex-col gap-1 text-sm text-muted;
+    @apply flex flex-col gap-1.5 text-sm text-muted;
   }
+
+  /* Schaltflächen: mindestens 44 px hoch (Apple HIG / WCAG 2.5.8) */
   .btn {
-    @apply inline-flex items-center rounded-md border border-line bg-surface px-3 py-1.5 text-sm hover:border-accent disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface-2 px-4 text-sm font-medium text-ink transition-colors hover:border-accent/60 hover:bg-track disabled:cursor-not-allowed disabled:opacity-40;
   }
   .btn-primary {
-    @apply inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:text-black;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-ink transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink;
   }
   .btn-icon {
-    @apply rounded px-2 text-lg text-muted hover:text-red-600;
+    @apply inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-lg text-muted transition-colors hover:bg-surface-2 hover:text-bad;
   }
 }
 
 @media print {
-  :root {
+  :root,
+  [data-theme] {
     --color-bg: #fff;
     --color-surface: #fff;
+    --color-surface-2: #fff;
     --color-ink: #000;
     --color-muted: #444;
     --color-line: #bbb;
+    color-scheme: light;
   }
   .no-print {
     display: none !important;
   }
   main {
     padding: 0 !important;
+    margin: 0 !important;
   }
   @page {
     margin: 15mm;

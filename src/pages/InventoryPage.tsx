@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
+import { PageHeader } from '../components/ui'
+import { StockOverview } from './StockOverview'
 import {
   CATEGORY_LABELS,
   materialKey,
@@ -24,13 +26,16 @@ const SOAP_CATEGORIES: ProductCategory[] = ['fat', 'lye', 'additive']
 
 export function InventoryPage() {
   const tab = ({ isActive }: { isActive: boolean }) =>
-    `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-surface font-semibold shadow-sm' : 'text-muted hover:text-ink'}`
+    `inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-medium transition-colors ${isActive ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink'}`
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Lager</h1>
-      <nav className="inline-flex gap-1 rounded-lg bg-track p-1">
+    <section>
+      <PageHeader eyebrow="Vorrat" title="Was ist da?" />
+      <nav className="mb-6 inline-flex flex-wrap gap-1 rounded-xl bg-surface-2 p-1" aria-label="Vorrat-Bereiche">
         <NavLink to="/lager" end className={tab}>
-          Bestand
+          Übersicht
+        </NavLink>
+        <NavLink to="/lager/gebinde" className={tab}>
+          Gebinde
         </NavLink>
         <NavLink to="/lager/artikel" className={tab}>
           Artikel & Preise
@@ -40,7 +45,8 @@ export function InventoryPage() {
         </NavLink>
       </nav>
       <Routes>
-        <Route index element={<Stock />} />
+        <Route index element={<StockOverview />} />
+        <Route path="gebinde" element={<Stock />} />
         <Route path="artikel" element={<Products />} />
         <Route path="import" element={<Import />} />
       </Routes>
