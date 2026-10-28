@@ -28,6 +28,7 @@ export function RecipeEditor() {
   const [draft, setDraft] = useState<Recipe>()
   const inventory = useLiveQuery(loadInventory)
   const base = useLiveQuery(() => (stored?.baseId ? db.recipes.get(stored.baseId) : undefined), [stored?.baseId])
+  const bases = useLiveQuery(() => db.recipes.filter((r) => !r.baseId).toArray())
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -123,6 +124,19 @@ export function RecipeEditor() {
                     {p.name}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="label">
+              Gehört zu
+              <select className="field" value={draft.baseId ?? ''} onChange={(e) => set({ baseId: e.target.value || undefined })}>
+                <option value="">– ist selbst eine Grundseife –</option>
+                {(bases ?? [])
+                  .filter((r) => r.id !== draft.id)
+                  .map((r) => (
+                    <option key={r.id} value={r.id}>
+                      Variante von {r.name}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="label">
@@ -376,11 +390,20 @@ function AdditiveTable({ draft, setInput }: TableProps) {
             <div key={i} className="rounded-md border border-line p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <select className="field min-w-0 flex-1" value={a.additiveId} onChange={(e) => update(i, { additiveId: e.target.value })}>
-                  {ADDITIVES.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.name}
-                    </option>
-                  ))}
+                  <optgroup label="Zusätze">
+                    {ADDITIVES.filter((x) => !x.fragrance).map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Duft (ätherische Öle)">
+                    {ADDITIVES.filter((x) => x.fragrance).map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
                 <NumberField className="w-28" value={a.percentOfFats} digits={2} suffix="%" ariaLabel="Dosierung" onChange={(v) => update(i, { percentOfFats: v ?? 0 })} />
                 <span className="w-20 text-right text-sm tabular-nums">{fmt((input.totalFat * a.percentOfFats) / 100, 1)} g</span>

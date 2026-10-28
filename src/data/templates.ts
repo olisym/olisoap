@@ -20,7 +20,7 @@ export const TEMPLATES: TemplateFamily[] = [
       name: 'Körperseife',
       description: 'Mild, cremig, ranzstabil. Wenig Laurinsäure, Härte über Stearin- und Palmitinsäure.',
       profileId: 'body-sensitive',
-      barWeight: 100,
+      barWeight: 125,
       notes:
         'Laurinsäure-Seifen (Kokos, Babassu) sind der Hauptauslöser für Reizungen durch Seife, deshalb nur 18 % Babassu. ' +
         'Härte kommt aus Shea und Kakaobutter, Pflege und Stabilität aus Olivenöl. ' +
@@ -48,7 +48,7 @@ export const TEMPLATES: TemplateFamily[] = [
         name: 'Körperseife Spar',
         description: 'Auf Preis optimiert: Kokos statt Babassu, Sonnenblumenöl High Oleic statt Oliven- und Avocadoöl.',
         profileId: 'body-sensitive',
-        barWeight: 100,
+        barWeight: 125,
         notes:
           'Rohstoffkosten ca. 30 % unter der Grundseife. Sonnenblumenöl unbedingt High Oleic (≥ 80 % Ölsäure), ' +
           'normales Sonnenblumenöl ist zu linolsäurereich. Arbeitstemperatur ca. 35–40 °C.',

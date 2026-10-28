@@ -69,6 +69,10 @@ export interface Batch {
   outflows: Outflow[]
   /** Gesamtgewicht aller Stücke beim Schneiden in g. */
   cutWeight?: number
+  /** Einzelgewichte der Stücke beim Schneiden in g. */
+  cutWeights?: number[]
+  /** Für wen gesiedet (Geschenk, Auftrag). */
+  recipient?: string
   /** Etikett gedruckt am. */
   labeledAt?: string
   /** "Am besten verwenden bis" für das Etikett. Fehlt = Vorschlag aus MHD der Fette. */
@@ -155,7 +159,7 @@ export interface BatchOptions {
   cureWeeks: number
   deductStock: boolean
   /** Weitere Angaben aus dem Siedeprotokoll (Temperaturen, Notizen). */
-  extra?: Pick<Partial<Batch>, 'lyeTemp' | 'fatTemp' | 'notes'>
+  extra?: Pick<Partial<Batch>, 'lyeTemp' | 'fatTemp' | 'notes' | 'recipient'>
 }
 
 /** Siedet ein Rezept: legt die Charge an und bucht auf Wunsch den Verbrauch aus dem Lager ab. */

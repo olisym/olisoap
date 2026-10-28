@@ -79,6 +79,8 @@ export interface Additive {
   id: string
   name: string
   phase: AdditivePhase
+  /** Duftstoff (ätherisches Öl): wird im Rezept als Duft geführt. */
+  fragrance?: boolean
   /** g NaOH bzw. KOH, die 1 g des Zusatzes neutralisiert (z. B. Säuren). */
   neutralizes?: { NaOH: number; KOH: number }
   /** Wasseranteil des Zusatzes (0–1), z. B. Natriumlaktat 60 % → 0,4 Wasser. */

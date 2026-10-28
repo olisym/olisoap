@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Check, Scissors, Tag } from 'lucide-react'
 import { NumberField } from '../components/NumberField'
 import { addDays, cureStatus, earliestFatBestBefore, type Weighing } from '../core/batch'
+import { parseWeights } from '../core/weights'
 import { calculate } from '../core/calc'
 import { evaluate } from '../core/evaluate'
 import { PROFILES_BY_ID } from '../data/profiles'
@@ -53,6 +54,7 @@ export function BatchList() {
               <span className="font-mono text-sm text-muted">{b.number}</span>
               <span className="font-semibold">{b.recipe.name}</span>
               <StatusBadge batch={b} />
+              {b.recipient && <span className="chip">für {b.recipient}</span>}
               <span className="ml-auto text-sm text-muted tabular-nums">
                 {de(b.date)} · {barsLeft(b)}/{b.bars} Stk · {b.bars > 0 ? `${fmt(b.cost / b.bars, 2)} €/Stk` : ''}
               </span>
@@ -127,6 +129,10 @@ export function BatchDetail() {
             <input type="date" className="field" value={batch.date} onChange={(e) => e.target.value && update({ date: e.target.value })} />
           </label>
           <label className="label">
+            Für
+            <input className="field" placeholder="z. B. Christoph, selbst" value={batch.recipient ?? ''} onChange={(e) => update({ recipient: e.target.value || undefined })} />
+          </label>
+          <label className="label">
             Reifezeit
             <NumberField value={batch.cureWeeks} digits={0} suffix="Wochen" onChange={(v) => update({ cureWeeks: v ?? 0 })} />
           </label>
@@ -165,6 +171,15 @@ export function BatchDetail() {
               <dd className="text-right">{fmt(batch.cost, 2)} €</dd>
               <dt className="font-semibold">Kosten pro Stück</dt>
               <dd className="text-right font-semibold">{batch.bars > 0 ? `${fmt(batch.cost / batch.bars, 2)} €` : '–'}</dd>
+              {batch.cutWeights && batch.cutWeights.length > 0 && (
+                <>
+                  <dt>Stückgewichte beim Schneiden</dt>
+                  <dd className="text-right">
+                    Ø {fmt(batch.cutWeights.reduce((a, b) => a + b, 0) / batch.cutWeights.length, 0)} g ({fmt(Math.min(...batch.cutWeights))}–
+                    {fmt(Math.max(...batch.cutWeights))})
+                  </dd>
+                </>
+              )}
               <dt>Frühestes MHD der Fette</dt>
               <dd className="text-right">{de(fatMhd)}</dd>
               <dt>Linol- + Linolensäure</dt>
@@ -359,41 +374,71 @@ function Lifecycle({ batch, update }: { batch: Batch; update: (p: Partial<Batch>
   )
 }
 
-/** Ausformen und Schneiden: Stücke zählen, alle zusammen wiegen. Das Ø-Gewicht wird erste Wägung des Probestücks. */
+/**
+ * Ausformen und Schneiden: entweder Einzelgewichte (Text, auch per Spracheingabe) oder Stückzahl + Gesamtgewicht.
+ * Das Ø-Gewicht wird die erste Wägung des Probestücks.
+ */
 function CutForm({ batch, update }: { batch: Batch; update: (p: Partial<Batch>) => void }) {
   const [date, setDate] = useState(today())
+  const [text, setText] = useState('')
   const [count, setCount] = useState<number | undefined>(batch.bars)
   const [total, setTotal] = useState<number>()
-  const avg = count && total ? total / count : undefined
+  const weights = parseWeights(text)
+  const n = weights.length || count
+  const sum = weights.length ? weights.reduce((a, b) => a + b, 0) : total
+  const avg = n && sum ? sum / n : undefined
+
   return (
-    <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-[auto_8rem_10rem_1fr_auto] sm:items-end">
+    <div className="mt-4 space-y-3 border-t border-line pt-4">
       <label className="label">
-        Geschnitten am
-        <input type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} />
+        Einzelgewichte der Stücke (tippen oder diktieren, alles außer Zahlen wird ignoriert)
+        <textarea className="field min-h-20 font-mono" placeholder="128 134 121 135 …" value={text} onChange={(e) => setText(e.target.value)} />
       </label>
-      <label className="label">
-        Stücke
-        <NumberField value={count} digits={0} suffix="Stk" onChange={setCount} />
-      </label>
-      <label className="label">
-        Alle zusammen
-        <NumberField value={total} digits={0} suffix="g" onChange={setTotal} />
-      </label>
-      <p className="text-sm text-muted">{avg ? `Ø ${fmt(avg, 1)} g pro Stück, das wird die erste Wägung des Probestücks.` : 'Alle Stücke auf einmal auf die Waage.'}</p>
-      <button
-        className="btn-primary"
-        disabled={!count}
-        onClick={() =>
-          update({
-            unmoldedAt: date,
-            bars: count!,
-            cutWeight: total,
-            weighings: avg ? [...batch.weighings, { date, grams: Math.round(avg * 10) / 10 }] : batch.weighings,
-          })
-        }
-      >
-        <Scissors size={18} /> Geschnitten
-      </button>
+      {weights.length > 0 && (
+        <p className="text-sm">
+          <b>{weights.length} Stücke</b> erkannt: {weights.map((w) => fmt(w, w % 1 ? 1 : 0)).join(' · ')}
+          <span className="text-muted">
+            {' '}
+            (Ø {fmt(avg!, 1)} g, {fmt(Math.min(...weights))}–{fmt(Math.max(...weights))} g, gesamt {fmt(sum!)} g)
+          </span>
+        </p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-[auto_8rem_10rem_1fr_auto] sm:items-end">
+        <label className="label">
+          Geschnitten am
+          <input type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+        {weights.length === 0 ? (
+          <>
+            <label className="label">
+              Stücke
+              <NumberField value={count} digits={0} suffix="Stk" onChange={setCount} />
+            </label>
+            <label className="label">
+              oder alle zusammen
+              <NumberField value={total} digits={0} suffix="g" onChange={setTotal} />
+            </label>
+          </>
+        ) : (
+          <span className="sm:col-span-2" />
+        )}
+        <p className="text-sm text-muted">{avg ? `Ø ${fmt(avg, 1)} g wird die erste Wägung des Probestücks.` : ''}</p>
+        <button
+          className="btn-primary"
+          disabled={!n}
+          onClick={() =>
+            update({
+              unmoldedAt: date,
+              bars: n!,
+              cutWeight: sum,
+              cutWeights: weights.length ? weights : undefined,
+              weighings: avg ? [...batch.weighings, { date, grams: Math.round(avg * 10) / 10 }] : batch.weighings,
+            })
+          }
+        >
+          <Scissors size={18} /> Geschnitten
+        </button>
+      </div>
     </div>
   )
 }
