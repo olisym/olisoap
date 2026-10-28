@@ -11,6 +11,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Die Sync-API nie aus dem Offline-Cache beantworten (sonst zeigt /api/… die Startseite).
+      workbox: { navigateFallbackDenylist: [/\/api\//] },
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'olisoap – Seifenwerkstatt',
