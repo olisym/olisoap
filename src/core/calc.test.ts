@@ -92,6 +92,13 @@ describe('evaluate', () => {
     expect(evaluate(r).some((f) => f.severity === 'error')).toBe(true)
   })
 
+  it('warnt bei hoher Überfettung mit vielen ungesättigten Fettsäuren', () => {
+    const r = calculate({ ...base, superfat: 10, fats: [{ fatId: 'olive', percent: 50 }, { fatId: 'argan', percent: 50 }] })
+    const msgs = evaluate(r).map((f) => f.message)
+    expect(msgs.some((m) => m.includes('oxidationsanfällig'))).toBe(true)
+    expect(msgs.some((m) => m.includes('Komplexbildner'))).toBe(true)
+  })
+
   it('warnt bei hohem Linolsäureanteil', () => {
     const r = calculate({ ...base, fats: [{ fatId: 'sunflower', percent: 100 }] })
     expect(evaluate(r).some((f) => f.message.includes('Linol'))).toBe(true)

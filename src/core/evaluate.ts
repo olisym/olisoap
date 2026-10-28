@@ -12,6 +12,8 @@ export const PROPERTY_LABELS: Record<PropertyKey, string> = {
   polyunsaturated: 'Linol- + Linolensäure',
 }
 
+const CHELATORS = ['citric-anhydrous', 'citric-monohydrate', 'sodium-citrate']
+
 export function inRange(value: number, range: Range): boolean {
   return (range.min === undefined || value >= range.min) && (range.max === undefined || value <= range.max)
 }
@@ -39,6 +41,13 @@ function baseRules(r: RecipeResult): Finding[] {
     out.push({ severity: 'warning', message: `Laugenkonzentration ${r.lyeConcentration.toFixed(1)} %: viel Wasser, längere Reifezeit, Gefahr von Glycerinflüssen und Schrumpfen.` })
   if (r.properties.polyunsaturated > 15)
     out.push({ severity: 'warning', message: `Linol- + Linolensäure ${r.properties.polyunsaturated.toFixed(1)} %: erhöhtes Risiko für Ranzigkeit und orange Flecken.` })
+  // Ranzigkeit: freies (unverseiftes) Fett oxidiert, Metallspuren beschleunigen das. Hohe Überfettung bei vielen
+  // mehrfach ungesättigten Fettsäuren und fehlender Komplexbildner sind die typische Kombination für orange Flecken.
+  const pufa = r.properties.polyunsaturated
+  if (pufa > 10 && input.superfat >= 8)
+    out.push({ severity: 'warning', message: `Überfettung ${input.superfat} % bei ${pufa.toFixed(1)} % Linol-/Linolensäure: Das freie Fett ist oxidationsanfällig. Überfettung senken oder ungesättigte Öle reduzieren.` })
+  if (pufa > 10 && !r.additives.some((a) => CHELATORS.includes(a.additive.id)))
+    out.push({ severity: 'info', message: 'Kein Komplexbildner (Zitronensäure/Natriumcitrat): Metallspuren aus Wasser und Werkzeug können die Ranzigkeit beschleunigen.' })
   for (const l of r.fats) {
     if (l.fat.id === 'castor' && l.percent > 15)
       out.push({ severity: 'warning', message: 'Rizinusöl über 15 %: Seife wird klebrig und weich.' })
