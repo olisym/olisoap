@@ -1,11 +1,15 @@
-import { useLiveQuery } from 'dexie-react-hooks'
-import { Link, useNavigate } from 'react-router-dom'
-import { Reminders } from '../components/Reminders'
+import { BookOpen, FlaskConical, PencilRuler, Plus, Search, Sparkles, X } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Chip, EmptyState, PageHeader, Panel } from '../components/ui'
 import { calculate } from '../core/calc'
+import { recipeCost } from '../core/cost'
+import { materialPrice, type Inventory } from '../core/inventory'
 import { db, familyRecipes, type Recipe } from '../db'
 import { PROFILES_BY_ID } from '../data/profiles'
 import { TEMPLATES } from '../data/templates'
 import { fmt } from '../format'
+import { groupRecipes, recipeFeasibility, useWorkshop } from '../hooks'
 
 export function newRecipe(): Recipe {
   const now = new Date().toISOString()
@@ -27,32 +31,49 @@ export function newRecipe(): Recipe {
   }
 }
 
-function summary(r: Recipe): string {
+/** Kurzprofil eines Rezepts für Karten: Fette, Kennzahlen, Kosten pro Stück. */
+function facts(r: Recipe, inv: Inventory) {
   try {
-    return calculate(r.input)
-      .fats.slice()
-      .sort((a, b) => b.percent - a.percent)
-      .map((l) => `${l.fat.name} ${fmt(l.percent)} %`)
-      .join(' · ')
+    const res = calculate(r.input)
+    const cost = recipeCost(res, (k) => materialPrice(inv, k))
+    const bars = Math.floor(res.batchWeight / (r.barWeight ?? 100))
+    return {
+      fats: res.fats
+        .slice()
+        .sort((a, b) => b.percent - a.percent)
+        .map((l) => `${l.fat.name} ${fmt(l.percent)}`)
+        .join(' · '),
+      cleansing: res.properties.cleansing,
+      hardness: res.properties.hardness,
+      perBar: bars && cost.missing.length < res.fats.length ? cost.total / bars : undefined,
+    }
   } catch {
-    return 'Rezept enthält unbekannte Zutaten'
+    return undefined
   }
 }
 
 export function RecipeList() {
-  const recipes = useLiveQuery(() => db.recipes.orderBy('name').toArray())
+  const w = useWorkshop()
   const navigate = useNavigate()
-  if (!recipes) return null
-
-  const ids = new Set(recipes.map((r) => r.id))
-  // Varianten, deren Grundseife gelöscht wurde, erscheinen selbst als Grundseife.
-  const bases = recipes.filter((r) => !r.baseId || !ids.has(r.baseId))
-  const variantsOf = (id: string) => recipes.filter((r) => r.baseId === id)
+  const [params, setParams] = useSearchParams()
+  const [q, setQ] = useState('')
+  if (!w) return null
+  const develop = params.get('entwickeln') === '1'
+  const families = groupRecipes(w.recipes).filter(
+    ({ base, variants }) => !q || [base, ...variants].some((r) => r.name.toLowerCase().includes(q.toLowerCase())),
+  )
 
   async function create() {
     const r = newRecipe()
     await db.recipes.add(r)
     navigate(`/rezepte/${r.id}`)
+  }
+
+  async function variantOf(base: Recipe) {
+    const now = new Date().toISOString()
+    const v: Recipe = { ...structuredClone(base), id: crypto.randomUUID(), baseId: base.id, name: `${base.name} Variante`, createdAt: now, updatedAt: now }
+    await db.recipes.add(v)
+    navigate(`/rezepte/${v.id}`)
   }
 
   async function addFamily(i: number) {
@@ -61,59 +82,110 @@ export function RecipeList() {
     navigate(`/rezepte/${rs[0].id}`)
   }
 
+  const card = (r: Recipe, variant: boolean) => {
+    const f = facts(r, w.inventory)
+    const feas = recipeFeasibility(r, w.inventory)
+    return (
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${variant ? 'rounded-xl bg-surface-2 p-3' : ''}`}>
+        <Link to={`/rezepte/${r.id}`} className="group min-w-0 flex-1">
+          <p className={`truncate group-hover:text-accent ${variant ? 'font-medium' : 'text-lg font-semibold'}`}>{r.name}</p>
+          <p className="truncate text-xs text-muted">{f?.fats ?? 'Rezept unvollständig'}</p>
+        </Link>
+        {f && (
+          <div className="flex flex-wrap gap-1.5">
+            <Chip>Reinigung {fmt(f.cleansing)}</Chip>
+            <Chip>Härte {fmt(f.hardness)}</Chip>
+            {f.perBar !== undefined && <Chip>{fmt(f.perBar, 2)} €/Stk</Chip>}
+          </div>
+        )}
+        <Link className={feas && feas.count > 0 ? 'btn-primary' : 'btn'} to={`/sieden/${r.id}`} aria-label={`${r.name} sieden`}>
+          <FlaskConical size={16} /> Sieden
+        </Link>
+      </div>
+    )
+  }
+
   return (
-    <section>
-      <Reminders />
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Rezepte</h1>
-        <div className="flex gap-2">
-          <select className="field" value="" aria-label="Grundseife aus Vorlage" onChange={(e) => e.target.value && addFamily(Number(e.target.value))}>
-            <option value="">Grundseife aus Vorlage …</option>
-            {TEMPLATES.map((t, i) => (
-              <option key={t.base.name} value={i}>
-                {t.base.name}
-                {t.variants.length > 0 && ` (+ ${t.variants.length} Variante${t.variants.length > 1 ? 'n' : ''})`}
-              </option>
-            ))}
-          </select>
-          <button className="btn-primary" onClick={create}>
-            + Neue Grundseife
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Rezepte"
+        title="Grundseifen & Varianten"
+        actions={
+          <button className="btn-primary" onClick={() => setParams({ entwickeln: '1' })}>
+            <PencilRuler size={18} /> Entwickeln
           </button>
-        </div>
-      </header>
-      {recipes.length === 0 && <p className="text-muted">Noch keine Rezepte. Starte mit einer Grundseife aus den Vorlagen.</p>}
+        }
+      />
+
+      {develop && (
+        <Panel
+          title="Was möchtest du entwickeln?"
+          icon={Sparkles}
+          className="panel-glow"
+          action={
+            <button className="btn-ghost" onClick={() => setParams({})} aria-label="Schließen">
+              <X size={18} />
+            </button>
+          }
+        >
+          <div className="grid gap-6 md:grid-cols-3">
+            <div>
+              <p className="mb-2 font-medium">Variante einer Grundseife</p>
+              <p className="mb-3 text-sm text-muted">Eine Sache ändern, Unterschiede sofort sehen.</p>
+              <div className="flex flex-col gap-2">
+                {groupRecipes(w.recipes).map(({ base }) => (
+                  <button key={base.id} className="btn justify-start" onClick={() => variantOf(base)}>
+                    <Plus size={16} /> {base.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 font-medium">Grundseife aus Vorlage</p>
+              <p className="mb-3 text-sm text-muted">Geprüfte Startpunkte inkl. Spar-Variante.</p>
+              <div className="flex flex-col gap-2">
+                {TEMPLATES.map((t, i) => (
+                  <button key={t.base.name} className="btn justify-start" onClick={() => addFamily(i)}>
+                    <Plus size={16} /> {t.base.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 font-medium">Leere Grundseife</p>
+              <p className="mb-3 text-sm text-muted">Von null an, mit Live-Kennzahlen und Zielprofil.</p>
+              <button className="btn justify-start" onClick={create}>
+                <Plus size={16} /> Neue Grundseife
+              </button>
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      <label className="relative block max-w-md">
+        <Search size={18} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden />
+        <input className="field w-full pl-10" placeholder="Rezept suchen" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rezepte durchsuchen" />
+      </label>
+
+      {families.length === 0 && (
+        <EmptyState icon={BookOpen} title={q ? 'Nichts gefunden' : 'Noch keine Rezepte'} action={!q && <button className="btn-primary" onClick={() => setParams({ entwickeln: '1' })}>Entwickeln</button>} />
+      )}
+
       <ul className="space-y-4">
-        {bases.map((b) => {
-          const variants = variantsOf(b.id)
-          return (
-            <li key={b.id} className="card">
-              <Link to={`/rezepte/${b.id}`} className="group block">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="text-lg font-semibold group-hover:text-accent">{b.name}</h2>
-                  {b.profileId && <span className="text-xs text-accent">{PROFILES_BY_ID[b.profileId]?.name}</span>}
-                </div>
-                <p className="mt-1 text-sm text-muted">{summary(b)}</p>
-                <p className="mt-1 text-xs text-muted">
-                  {fmt(b.input.totalFat)} g Fett · {fmt(b.input.superfat, 1)} % ÜF
-                </p>
-              </Link>
-              {variants.length > 0 && (
-                <ul className="mt-3 space-y-1 border-t border-line pt-3">
-                  {variants.map((v) => (
-                    <li key={v.id}>
-                      <Link to={`/rezepte/${v.id}`} className="group flex flex-wrap items-baseline gap-x-3 rounded-md px-2 py-1 hover:bg-track">
-                        <span className="text-muted">↳</span>
-                        <span className="font-medium group-hover:text-accent">{v.name}</span>
-                        <span className="text-xs text-muted">{v.description}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          )
-        })}
+        {families.map(({ base, variants }) => (
+          <li key={base.id} className="card space-y-3">
+            {base.profileId && <p className="eyebrow">{PROFILES_BY_ID[base.profileId]?.name}</p>}
+            {card(base, false)}
+            {variants.length > 0 && (
+              <ul className="space-y-2">
+                {variants.map((v) => (
+                  <li key={v.id}>{card(v, true)}</li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
       </ul>
-    </section>
+    </div>
   )
 }

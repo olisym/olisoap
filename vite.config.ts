@@ -17,8 +17,8 @@ export default defineConfig({
         short_name: 'olisoap',
         description: 'Rezepte, Laugenrechner und Siedebuch für Seifensieder.',
         lang: 'de',
-        theme_color: '#2f6f5e',
-        background_color: '#f7f6f3',
+        theme_color: '#0a0f15',
+        background_color: '#0a0f15',
         display: 'standalone',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },

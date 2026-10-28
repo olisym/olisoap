@@ -4,7 +4,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Findings } from '../components/Findings'
 import { NumberField } from '../components/NumberField'
 import { PropertyBars } from '../components/PropertyBars'
-import { SiedenPanel } from '../components/SiedenPanel'
 import { VariantDiff } from '../components/VariantDiff'
 import { calculate, sapBasis, sapValue, type RecipeResult } from '../core/calc'
 import { barCount, recipeCost } from '../core/cost'
@@ -27,7 +26,6 @@ export function RecipeEditor() {
   const { id } = useParams()
   const stored = useLiveQuery(() => (id ? db.recipes.get(id) : undefined), [id])
   const [draft, setDraft] = useState<Recipe>()
-  const [sieden, setSieden] = useState(false)
   const inventory = useLiveQuery(loadInventory)
   const base = useLiveQuery(() => (stored?.baseId ? db.recipes.get(stored.baseId) : undefined), [stored?.baseId])
   const navigate = useNavigate()
@@ -74,7 +72,7 @@ export function RecipeEditor() {
     const hasVariants = (await db.recipes.where('id').notEqual(draft!.id).filter((r) => r.baseId === draft!.id).count()) > 0
     if (!confirm(`„${draft!.name}“ wirklich löschen?${hasVariants ? ' Ihre Varianten bleiben als eigenständige Rezepte erhalten.' : ''}`)) return
     await db.recipes.delete(draft!.id)
-    navigate('/')
+    navigate('/rezepte')
   }
 
   return (
@@ -92,9 +90,15 @@ export function RecipeEditor() {
         <button className="btn" onClick={createVariant}>
           Variante anlegen
         </button>
-        <button className="btn-primary" disabled={dirty || !result} title={dirty ? 'Erst speichern' : undefined} onClick={() => setSieden(!sieden)}>
-          Sieden
-        </button>
+        {dirty || !result ? (
+          <button className="btn-primary" disabled title="Erst speichern">
+            Sieden
+          </button>
+        ) : (
+          <Link className="btn-primary" to={`/sieden/${draft.id}`}>
+            Sieden
+          </Link>
+        )}
         <Link className="btn" to={`/rezepte/${draft.id}/druck`}>
           Arbeitsblatt
         </Link>
@@ -106,7 +110,6 @@ export function RecipeEditor() {
         </button>
       </header>
 
-      {sieden && result && inventory && <SiedenPanel recipe={draft} result={result} inventory={inventory} onClose={() => setSieden(false)} />}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
         <div className="space-y-6">
