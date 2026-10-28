@@ -5,7 +5,7 @@ import { NumberField } from '../components/NumberField'
 import { EmptyState, PageHeader, Panel } from '../components/ui'
 import { needsOf } from '../core/batch'
 import { calculate } from '../core/calc'
-import { CATEGORY_LABELS, materialKey, packageGrams, type Product } from '../core/inventory'
+import { CATEGORY_LABELS, materialKey, offerPrice, packageGrams, type Product } from '../core/inventory'
 import { planShopping, type ShoppingSuggestion } from '../core/shopping'
 import { db, receiveOrderItem, type OrderItem } from '../db'
 import { fmt } from '../format'
@@ -276,8 +276,9 @@ function AddManual({ products }: { products: Product[] }) {
         className="btn"
         disabled={!productId}
         onClick={async () => {
-          const last = await db.purchases.where('productId').equals(productId).sortBy('date')
-          await db.orderItems.add({ id: crypto.randomUUID(), productId, packages: 1, unitPrice: last.at(-1)?.unitPrice, status: 'open', createdAt: new Date().toISOString() })
+          const product = products.find((p) => p.id === productId)
+          const inv = { products, purchases: await db.purchases.where('productId').equals(productId).toArray(), lots: [] }
+          await db.orderItems.add({ id: crypto.randomUUID(), productId, packages: 1, unitPrice: product && offerPrice(inv, product)?.unitPrice, status: 'open', createdAt: new Date().toISOString() })
           setProductId('')
         }}
       >

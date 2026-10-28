@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { REFERENCE_2000G } from './fixtures'
 import { classify, importSalandia, parsePackage } from '../import/salandia'
+import { importSalandiaCatalog } from '../import/salandiaCatalog'
 import { calculate } from './calc'
 import { barCount, recipeCost } from './cost'
 import { materialPrice, materialStock, packageGrams, type Inventory, type Product } from './inventory'
@@ -79,5 +80,33 @@ describe('Salandia-Kategorien', () => {
   it('hält Rohstoffe in Glasflaschen nicht für Verpackung', () => {
     expect(classify('Sala d-Panthenol Provitamin B5 75% 100 ml Glasflasche').category).toBe('cosmetic')
     expect(classify('Sala Braunglas Salbentiegel 60 ml').category).toBe('packaging')
+  })
+})
+
+describe('Salandia-Katalog', () => {
+  const catalog = {
+    source: 'salandia.de',
+    scraped_at: '2026-10-28',
+    products: [
+      { name: 'Sala Natriumhydroxid Ätznatron in Perlen 1 kg 1000 g Kanister', sku: null, url: 'https://x/naoh', kategorie: 'Basisgrundstoffe', packungsgroesse: 1000, einheit: 'g' as const, preis_eur: 8.69, bio: false, lieferbar: null },
+      { name: 'Sala Lavendelöl fein ätherisches Öl 10 ml', sku: null, url: 'https://x/lav', kategorie: 'Wellness & Hobbythek > Ätherische Öle/ Duftstoffe > Naturreine Öle', packungsgroesse: 10, einheit: 'ml' as const, preis_eur: 4.5, bio: false, lieferbar: true },
+      { name: 'Sala Rizinusöl kaltgepresst BIO 250 ml Glasflasche', sku: null, url: 'https://x/castor', kategorie: 'Pflanzenöl', packungsgroesse: 250, einheit: 'ml' as const, preis_eur: 5.99, bio: true, lieferbar: false },
+    ],
+  }
+
+  it('legt neue Artikel mit Shop-Preis an und aktualisiert bekannte nur im Preis', () => {
+    const known: Product = { ...castor, url: 'https://x/castor', density: 0.97 }
+    const r = importSalandiaCatalog(catalog, [known])
+    expect(r.products.map((p) => p.category)).toEqual(['lye', 'essentialOil'])
+    expect(r.products[0]).toMatchObject({ lyeType: 'NaOH', listPrice: 8.69, listPriceDate: '2026-10-28' })
+    expect(r.updates).toEqual([{ id: known.id, changes: { listPrice: 5.99, listPriceDate: '2026-10-28', available: false, url: 'https://x/castor' } }])
+  })
+
+  it('Katalogpreis fließt in Materialpreis und Artikelwahl ein', () => {
+    const { products } = importSalandiaCatalog(catalog, [])
+    const inv: Inventory = { products, purchases: [], lots: [] }
+    expect(materialPrice(inv, 'lye:NaOH')).toMatchObject({ pricePerKg: 8.69, source: 'list' })
+    // nicht lieferbar → wird nicht vorgeschlagen, ist aber als letzter Ausweg bekannt
+    expect(materialPrice(inv, 'fat:castor')).toBeDefined()
   })
 })

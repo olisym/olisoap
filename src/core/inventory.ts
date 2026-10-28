@@ -36,6 +36,11 @@ export interface Product {
   density?: number
   organic?: boolean
   notes?: string
+  /** Aktueller Shop-Preis pro Packung (aus einem Katalog-Import), unabhängig von eigenen Einkäufen. */
+  listPrice?: number
+  listPriceDate?: string
+  /** Laut Shop lieferbar. Fehlt = unbekannt. */
+  available?: boolean
 }
 
 export interface Purchase {
@@ -97,28 +102,65 @@ export interface Inventory {
 
 export interface MaterialPrice {
   pricePerKg: number
-  source: 'stock' | 'purchase'
+  source: 'stock' | 'purchase' | 'list'
   /** Datum des zugrunde liegenden Einkaufs. */
   date?: string
 }
 
-/** Preis eines Materials: gewichteter Schnitt der Gebinde im Lager, sonst der letzte Einkaufspreis. */
-export function materialPrice(inv: Inventory, key: MaterialKey): MaterialPrice | undefined {
-  const products = inv.products.filter((p) => materialKey(p) === key)
-  const ids = new Set(products.map((p) => p.id))
+export interface Offer {
+  unitPrice: number
+  date: string
+  source: 'purchase' | 'list'
+}
 
+const yearsBefore = (iso: string, years: number) => `${Number(iso.slice(0, 4)) - years}${iso.slice(4)}`
+
+/** Aktuellster bekannter Preis eines Artikels: Shop-Katalog oder eigener Einkauf, je nachdem was neuer ist. */
+export function offerPrice(inv: Inventory, p: Product): Offer | undefined {
+  const last = inv.purchases.filter((x) => x.productId === p.id).sort((a, b) => b.date.localeCompare(a.date))[0]
+  const purchase: Offer | undefined = last && { unitPrice: last.unitPrice, date: last.date, source: 'purchase' }
+  const list: Offer | undefined = p.listPrice !== undefined && p.listPriceDate ? { unitPrice: p.listPrice, date: p.listPriceDate, source: 'list' } : undefined
+  if (!purchase || !list) return purchase ?? list
+  return list.date >= purchase.date ? list : purchase
+}
+
+/** Größte Packung, die ohne eigene Kaufhistorie vorgeschlagen wird (Großgebinde nur, wenn man sie schon mal gekauft hat). */
+const MAX_SUGGESTED_PACKAGE_G = 5000
+
+/**
+ * Bester Artikel für ein Material:
+ * 1. unter den in den letzten drei Jahren selbst gekauften Artikeln der günstigste pro kg (bekannte Qualität und Größe),
+ * 2. sonst unter den lieferbaren Katalog-Artikeln bis 5 kg der günstigste pro kg,
+ * 3. sonst irgendein passender Artikel.
+ */
+export function bestProduct(inv: Inventory, key: MaterialKey, today = new Date().toISOString().slice(0, 10)): Product | undefined {
+  const candidates = inv.products.filter((p) => materialKey(p) === key && packageGrams(p))
+  const perKg = (p: Product) => {
+    const o = offerPrice(inv, p)
+    return o ? pricePerKg(p, o.unitPrice)! : Infinity
+  }
+  const cheapest = (list: Product[]) => list.sort((a, b) => perKg(a) - perKg(b))[0]
+  const cutoff = yearsBefore(today, 3)
+  const bought = candidates.filter((p) => inv.purchases.some((x) => x.productId === p.id && x.date >= cutoff))
+  if (bought.length) return cheapest(bought)
+  const listed = candidates.filter(
+    (p) => p.listPrice !== undefined && p.listPriceDate && p.listPriceDate >= yearsBefore(today, 1) && p.available !== false && packageGrams(p)! <= MAX_SUGGESTED_PACKAGE_G,
+  )
+  return cheapest(listed) ?? candidates[0]
+}
+
+/** Preis eines Materials: gewichteter Schnitt der Gebinde im Lager, sonst der Preis des besten Artikels. */
+export function materialPrice(inv: Inventory, key: MaterialKey): MaterialPrice | undefined {
+  const ids = new Set(inv.products.filter((p) => materialKey(p) === key).map((p) => p.id))
   const lots = inv.lots.filter((l) => ids.has(l.productId) && l.gramsLeft > 0 && l.pricePerKg !== undefined)
   const grams = lots.reduce((s, l) => s + l.gramsLeft, 0)
   if (grams > 0)
     return { pricePerKg: lots.reduce((s, l) => s + l.pricePerKg! * l.gramsLeft, 0) / grams, source: 'stock' }
 
-  const byId = new Map(products.map((p) => [p.id, p]))
-  const latest = inv.purchases
-    .filter((pu) => ids.has(pu.productId))
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .map((pu) => ({ pu, price: pricePerKg(byId.get(pu.productId)!, pu.unitPrice) }))
-    .find((x) => x.price !== undefined)
-  return latest ? { pricePerKg: latest.price!, source: 'purchase', date: latest.pu.date } : undefined
+  const product = bestProduct(inv, key)
+  const offer = product && offerPrice(inv, product)
+  const perKg = offer && pricePerKg(product, offer.unitPrice)
+  return perKg !== undefined && offer ? { pricePerKg: perKg, source: offer.source, date: offer.date } : undefined
 }
 
 /** Vorrätige Menge eines Materials in g. */
