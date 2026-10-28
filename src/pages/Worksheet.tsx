@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { calculate, type AdditiveLine } from '../core/calc'
 import { evaluate } from '../core/evaluate'
 import { PROFILES_BY_ID } from '../data/profiles'
-import { db } from '../db'
+import { db, readyDate, type Batch, type Recipe } from '../db'
 import { fmt } from '../format'
 
 function Row({ name, grams, share, note }: { name: string; grams: number; share: string; note?: string }) {
@@ -35,6 +35,19 @@ export function Worksheet() {
   const { id } = useParams()
   const recipe = useLiveQuery(() => (id ? db.recipes.get(id) : undefined), [id])
   if (!recipe) return <p className="text-muted">Lade …</p>
+  return <WorksheetView recipe={recipe} back={`/rezepte/${recipe.id}`} />
+}
+
+export function BatchWorksheet() {
+  const { id } = useParams()
+  const batch = useLiveQuery(() => (id ? db.batches.get(id) : undefined), [id])
+  if (!batch) return <p className="text-muted">Lade …</p>
+  return <WorksheetView recipe={batch.recipe} batch={batch} back={`/chargen/${batch.id}`} />
+}
+
+const de = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('de-DE') : '')
+
+function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch; back: string }) {
   const r = calculate(recipe.input)
   const { input } = recipe
   const profile = recipe.profileId ? PROFILES_BY_ID[recipe.profileId] : undefined
@@ -49,7 +62,7 @@ export function Worksheet() {
   return (
     <article className="worksheet mx-auto max-w-3xl">
       <div className="no-print mb-4 flex gap-2">
-        <Link className="btn" to={`/rezepte/${recipe.id}`}>
+        <Link className="btn" to={back}>
           ← Zurück
         </Link>
         <button className="btn-primary" onClick={() => window.print()}>
@@ -131,9 +144,18 @@ export function Worksheet() {
       <section className="mt-6 break-inside-avoid">
         <h2 className="text-xs font-semibold tracking-wide uppercase">Chargenprotokoll</h2>
         <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-          {['Siededatum', 'Chargen-Nr.', 'Temp. Lauge / Fette (°C)', 'Ausgeformt & geschnitten', 'Reif ab', 'pH- / Zungentest OK'].map((l) => (
+          {(
+            [
+              ['Siededatum', de(batch?.date)],
+              ['Chargen-Nr.', batch?.number],
+              ['Temp. Lauge / Fette (°C)', ''],
+              ['Ausgeformt & geschnitten', ''],
+              ['Reif ab', batch ? `${de(readyDate(batch))} (frühestens)` : ''],
+              ['pH- / Zungentest OK', ''],
+            ] as const
+          ).map(([l, v]) => (
             <div key={l} className="border-b border-ink/40 pb-1 text-muted">
-              {l}:
+              {l}: <span className="font-semibold text-ink">{v}</span>
             </div>
           ))}
         </div>
