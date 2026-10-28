@@ -28,6 +28,8 @@ export interface Fat {
   density?: number
   /** Kurze, sachliche Notiz: wofür das Fett taugt, was es kritisch macht. */
   notes?: string
+  /** INCI-Bezeichnungen: verseift mit NaOH, verseift mit KOH, unverseiftes Öl (Überfettung). */
+  inci?: { sodium?: string; potassium?: string; oil?: string }
 }
 
 export type LyeType = 'NaOH' | 'KOH'
@@ -87,6 +89,8 @@ export interface Additive {
   purpose: string
   /** Sachliche Einordnung der Belege (was ist gut belegt, was ist Behauptung). */
   evidence: string
+  /** INCI-Bezeichnung im fertigen Produkt (Säuren als ihr Natriumsalz). */
+  inci?: string
 }
 
 export interface SoapProperties {

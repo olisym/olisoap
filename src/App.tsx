@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard'
 import { DataPage } from './pages/DataPage'
 import { FatList } from './pages/FatList'
 import { InventoryPage } from './pages/InventoryPage'
+import { Labels } from './pages/Labels'
 import { RecipeEditor } from './pages/RecipeEditor'
 import { RecipeList } from './pages/RecipeList'
 import { Shopping } from './pages/Shopping'
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/chargen" element={<BatchList />} />
           <Route path="/chargen/:id" element={<BatchDetail />} />
           <Route path="/chargen/:id/druck" element={<BatchWorksheet />} />
+          <Route path="/chargen/:id/etikett" element={<Labels />} />
           <Route path="/werkzeuge" element={<Tools />} />
           <Route path="/korrektur" element={<Correction />} />
           <Route path="/korrektur/:id" element={<Correction />} />

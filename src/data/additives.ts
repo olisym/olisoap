@@ -12,6 +12,7 @@ const acid = (molarMass: number, protons: number) => ({
 export const ADDITIVES: Additive[] = [
   {
     id: 'citric-anhydrous',
+    inci: 'Sodium Citrate',
     name: 'Zitronensäure (wasserfrei)',
     phase: 'lye',
     neutralizes: acid(192.12, 3),
@@ -21,6 +22,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'citric-monohydrate',
+    inci: 'Sodium Citrate',
     name: 'Zitronensäure (Monohydrat)',
     phase: 'lye',
     neutralizes: acid(210.14, 3),
@@ -30,6 +32,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'sodium-citrate',
+    inci: 'Sodium Citrate',
     name: 'Natriumcitrat (Trinatriumcitrat-Dihydrat)',
     phase: 'lye',
     typicalPercent: [1, 3],
@@ -38,6 +41,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'sodium-lactate-60',
+    inci: 'Sodium Lactate',
     name: 'Natriumlaktat (60 % Lösung)',
     phase: 'lye',
     waterFraction: 0.4,
@@ -48,6 +52,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'kaolin',
+    inci: 'Kaolin',
     name: 'Weiße Tonerde (Kaolin)',
     phase: 'trace',
     typicalPercent: [1, 3],
@@ -56,6 +61,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'silk-protein',
+    inci: 'Hydrolyzed Silk',
     name: 'Seidenprotein (flüssig)',
     phase: 'trace',
     typicalPercent: [0.5, 2],
@@ -64,6 +70,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'glycerin',
+    inci: 'Glycerin',
     name: 'Glycerin (pflanzlich, 99,5 %)',
     phase: 'trace',
     density: 1.26,
@@ -73,6 +80,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'salt',
+    inci: 'Sodium Chloride',
     name: 'Kochsalz',
     phase: 'lye',
     typicalPercent: [0.5, 1],
@@ -81,6 +89,7 @@ export const ADDITIVES: Additive[] = [
   },
   {
     id: 'sugar',
+    inci: 'Sucrose',
     name: 'Zucker',
     phase: 'lye',
     typicalPercent: [0.5, 2],
