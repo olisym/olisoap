@@ -110,3 +110,10 @@ describe('Salandia-Katalog', () => {
     expect(materialPrice(inv, 'fat:castor')).toBeDefined()
   })
 })
+
+describe('Ätherische Öle', () => {
+  it('werden nur als ätherisches Öl dem Duftstoff zugeordnet', () => {
+    expect(classify('Sala Rosmarinöl Cineol ätherisches Öl naturrein 100 ml PET')).toMatchObject({ category: 'essentialOil', additiveId: 'eo-rosemary' })
+    expect(classify('Sala Rosmarin Extrakt Antioxidans 50 ml').additiveId).toBeUndefined()
+  })
+})

@@ -42,6 +42,24 @@ type Rule = [RegExp, Partial<Pick<Product, 'category' | 'fatId' | 'additiveId' |
 
 // Reihenfolge zählt: spezifischere Regeln zuerst.
 const RULES: Rule[] = [
+  // Ätherische Öle: erst die bekannten, dann der Rest allgemein.
+  [/^(?=.*ätherisch)(?=.*(?:rosmarin))/i, { category: 'essentialOil', additiveId: 'eo-rosemary' }],
+  [/^(?=.*ätherisch)(?=.*(?:bergamott))/i, { category: 'essentialOil', additiveId: 'eo-bergamot' }],
+  [/^(?=.*ätherisch)(?=.*(?:lavendel))/i, { category: 'essentialOil', additiveId: 'eo-lavender' }],
+  [/^(?=.*ätherisch)(?=.*(?:zedernholz))/i, { category: 'essentialOil', additiveId: 'eo-cedarwood' }],
+  [/^(?=.*ätherisch)(?=.*(?:latschenkiefer))/i, { category: 'essentialOil', additiveId: 'eo-dwarf-pine' }],
+  [/^(?=.*ätherisch)(?=.*(?:zirbel))/i, { category: 'essentialOil', additiveId: 'eo-stone-pine' }],
+  [/^(?=.*ätherisch)(?=.*(?:edeltanne|weißtanne))/i, { category: 'essentialOil', additiveId: 'eo-silver-fir' }],
+  [/^(?=.*ätherisch)(?=.*(?:zypresse))/i, { category: 'essentialOil', additiveId: 'eo-cypress' }],
+  [/^(?=.*ätherisch)(?=.*(?:eukalyptus))/i, { category: 'essentialOil', additiveId: 'eo-eucalyptus' }],
+  [/^(?=.*ätherisch)(?=.*(?:pfefferminz|minzöl))/i, { category: 'essentialOil', additiveId: 'eo-peppermint' }],
+  [/^(?=.*ätherisch)(?=.*(?:patchouli))/i, { category: 'essentialOil', additiveId: 'eo-patchouli' }],
+  [/^(?=.*ätherisch)(?=.*(?:zitronenöl))/i, { category: 'essentialOil', additiveId: 'eo-lemon' }],
+  [/^(?=.*ätherisch)(?=.*(?:orangenöl))/i, { category: 'essentialOil', additiveId: 'eo-orange' }],
+  [/^(?=.*ätherisch)(?=.*(?:teebaum))/i, { category: 'essentialOil', additiveId: 'eo-tea-tree' }],
+  [/^(?=.*ätherisch)(?=.*(?:nelkenblüten|nelkenöl))/i, { category: 'essentialOil', additiveId: 'eo-clove' }],
+  [/^(?=.*ätherisch)(?=.*(?:cassia|zimtöl))/i, { category: 'essentialOil', additiveId: 'eo-cassia' }],
+  [/^(?=.*ätherisch)(?=.*(?:litsea))/i, { category: 'essentialOil', additiveId: 'eo-litsea' }],
   [/ätherisches öl/i, { category: 'essentialOil' }],
   [/kokosöl/i, { category: 'fat', fatId: 'coconut' }],
   [/babassu/i, { category: 'fat', fatId: 'babassu' }],

@@ -70,7 +70,7 @@ export type MaterialKey = `fat:${string}` | `additive:${string}` | `lye:${LyeTyp
 
 export function materialKey(p: Product): MaterialKey | undefined {
   if (p.category === 'fat' && p.fatId) return `fat:${p.fatId}`
-  if (p.category === 'additive' && p.additiveId) return `additive:${p.additiveId}`
+  if ((p.category === 'additive' || p.category === 'essentialOil') && p.additiveId) return `additive:${p.additiveId}`
   if (p.category === 'lye' && p.lyeType) return `lye:${p.lyeType}`
   return undefined
 }
