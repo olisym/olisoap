@@ -63,6 +63,15 @@ export const ADDITIVES: Additive[] = [
     evidence: 'Belege für eine Hautwirkung in einem abgespülten, alkalischen Produkt fehlen weitgehend. Wird von Siedern subjektiv geschätzt.',
   },
   {
+    id: 'glycerin',
+    name: 'Glycerin (pflanzlich, 99,5 %)',
+    phase: 'trace',
+    density: 1.26,
+    typicalPercent: [3, 10],
+    purpose: 'Rasierseife: weichere Seife im Tiegel, leichteres Aufnehmen mit dem Pinsel, gleitfähigerer Schaum. In Körperseife meist überflüssig, Glycerin entsteht beim Verseifen ohnehin.',
+    evidence: 'Feuchthaltende Wirkung von Glycerin ist gut belegt. Der Effekt auf den Rasierschaum ist Praxiserfahrung, aber gut reproduzierbar.',
+  },
+  {
     id: 'salt',
     name: 'Kochsalz',
     phase: 'lye',

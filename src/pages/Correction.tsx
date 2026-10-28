@@ -17,7 +17,7 @@ export function Correction() {
 
   const plan = recipe ? calculate(recipe.input) : undefined
   const c = plan ? correct(plan, { fatGrams, lyeWeighed }) : undefined
-  const lye = recipe?.input.lyeType ?? 'NaOH'
+  const lye = plan ? plan.lyeParts.map((p) => p.type).join(' + ') : 'NaOH'
 
   return (
     <section className="space-y-4">
@@ -96,6 +96,8 @@ export function Correction() {
                 <p>
                   <b className="tabular-nums">{fmt(c.addLye, 1)} g {lye}</b> und <b className="tabular-nums">{fmt(c.addWater, 1)} g Wasser</b>{' '}
                   (hält die Konzentration). Neues {lye} gesamt: {fmt(c.lyeWeighedRequired, 1)} g.
+                  {plan.lyeParts.length > 1 &&
+                    ` Aufgeteilt: ${plan.lyeParts.map((p) => `${fmt((c.addLye * p.weighed) / plan.lyeWeighed, 1)} g ${p.type}`).join(' + ')}.`}
                 </p>
                 <p className="mt-1 text-xs text-muted">
                   Oder so lassen: Die Seife hat dann {fmt(c.superfatActual, 1)} % Überfettung.

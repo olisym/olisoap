@@ -201,6 +201,14 @@ export const FATS: Fat[] = [
     iodine: 128,
   },
   {
+    id: 'stearic-acid',
+    name: 'Stearinsäure (dreifach gepresst)',
+    sapKoh: 207,
+    fattyAcids: { palmitic: 45, stearic: 55 },
+    iodine: 1,
+    notes: 'Freie Fettsäure (kein Triglycerid): verseift sofort, bildet kein Glycerin, dickt den Leim sehr schnell an. Basis für dichten, stabilen Rasierschaum. Schmilzt erst bei ca. 55–70 °C.',
+  },
+  {
     id: 'palm',
     name: 'Palmöl',
     sapKoh: 199,

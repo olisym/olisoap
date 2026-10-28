@@ -32,6 +32,9 @@ export interface Fat {
 
 export type LyeType = 'NaOH' | 'KOH'
 
+/** Lauge im Rezept: eine Sorte oder Mischlauge (z. B. für Rasierseife). */
+export type RecipeLye = LyeType | 'dual'
+
 export type WaterMode =
   | { mode: 'percentOfFats'; value: number } // Wasser in % der Gesamtfettmenge
   | { mode: 'concentration'; value: number } // Laugenkonzentration in % (Lauge / (Lauge + Wasser))
@@ -56,9 +59,13 @@ export interface RecipeAdditive {
 export interface RecipeInput {
   totalFat: number // g
   fats: RecipeFat[]
-  lyeType: LyeType
-  /** Reinheit der Lauge in Prozent (handelsübliches NaOH ca. 99 %, KOH ca. 90 %). */
+  lyeType: RecipeLye
+  /** Reinheit der Lauge in Prozent (handelsübliches NaOH ca. 99 %, KOH ca. 90 %). Bei Mischlauge: Reinheit des NaOH. */
   lyePurity: number
+  /** Nur Mischlauge: Anteil KOH an der Verseifung in Prozent (molar, also an der verseiften Fettmenge). */
+  kohShare?: number
+  /** Nur Mischlauge: Reinheit des KOH in Prozent. */
+  kohPurity?: number
   superfat: number // %
   water: WaterMode
   additives: RecipeAdditive[]

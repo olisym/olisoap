@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Findings } from '../components/Findings'
 import { NumberField } from '../components/NumberField'
 import { PropertyBars } from '../components/PropertyBars'
 import { SiedenPanel } from '../components/SiedenPanel'
-import { calculate, sapValue, type RecipeResult } from '../core/calc'
+import { calculate, sapBasis, sapValue, type RecipeResult } from '../core/calc'
 import { barCount, recipeCost } from '../core/cost'
 import { materialPrice, materialStock, type Inventory } from '../core/inventory'
 import { evaluate } from '../core/evaluate'
@@ -132,17 +132,34 @@ export function RecipeEditor() {
                 value={input.lyeType}
                 onChange={(e) => {
                   const lyeType = e.target.value as RecipeInput['lyeType']
-                  setInput({ lyeType, lyePurity: lyeType === 'KOH' ? 90 : 100 })
+                  setInput(
+                    lyeType === 'dual'
+                      ? { lyeType, lyePurity: 100, kohShare: input.kohShare ?? 50, kohPurity: input.kohPurity ?? 90 }
+                      : { lyeType, lyePurity: lyeType === 'KOH' ? 90 : 100 },
+                  )
                 }}
               >
                 <option value="NaOH">NaOH (feste Seife)</option>
                 <option value="KOH">KOH (Flüssigseife)</option>
+                <option value="dual">NaOH + KOH (z. B. Rasierseife)</option>
               </select>
             </label>
             <label className="label">
-              Reinheit der Lauge
+              Reinheit {input.lyeType === 'dual' ? 'NaOH' : 'der Lauge'}
               <NumberField value={input.lyePurity} digits={1} suffix="%" onChange={(v) => setInput({ lyePurity: v || 100 })} />
             </label>
+            {input.lyeType === 'dual' && (
+              <>
+                <label className="label" title="Anteil der Fette, die mit KOH verseift werden">
+                  KOH-Anteil
+                  <NumberField value={input.kohShare} digits={0} suffix="%" onChange={(v) => setInput({ kohShare: v ?? 0 })} />
+                </label>
+                <label className="label">
+                  Reinheit KOH
+                  <NumberField value={input.kohPurity} digits={1} suffix="%" onChange={(v) => setInput({ kohPurity: v || 90 })} />
+                </label>
+              </>
+            )}
             <label className="label">
               <select
                 className="field-inline"
@@ -182,16 +199,20 @@ export function RecipeEditor() {
               <div className="card">
                 <h2 className="mb-2 font-semibold">Lauge</h2>
                 <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm tabular-nums">
-                  <dt>{input.lyeType} für Fette</dt>
-                  <dd className="text-right">{fmt(result.lyeForFats / (input.lyePurity / 100), 1)} g</dd>
                   {result.lyeForAdditives > 0 && (
                     <>
-                      <dt>{input.lyeType} für Säuren</dt>
-                      <dd className="text-right">{fmt(result.lyeForAdditives / (input.lyePurity / 100), 1)} g</dd>
+                      <dt>davon für Säuren</dt>
+                      <dd className="text-right">{fmt((result.lyeForAdditives / result.lyePure) * 100, 1)} %</dd>
                     </>
                   )}
-                  <dt className="font-semibold">{input.lyeType} einwiegen</dt>
-                  <dd className="text-right text-lg font-semibold">{fmt(result.lyeWeighed, 1)} g</dd>
+                  {result.lyeParts.map((p) => (
+                    <Fragment key={p.type}>
+                      <dt className="font-semibold">
+                        {p.type} einwiegen{p.purity < 100 && <span className="font-normal text-muted"> ({fmt(p.purity, 0)} %)</span>}
+                      </dt>
+                      <dd className="text-right text-lg font-semibold">{fmt(p.weighed, 1)} g</dd>
+                    </Fragment>
+                  ))}
                   <dt className="font-semibold">Wasser</dt>
                   <dd className="text-right text-lg font-semibold">{fmt(result.water, 0)} g</dd>
                   <dt>Laugenkonzentration</dt>
@@ -308,11 +329,11 @@ function FatTable({ draft, setInput }: TableProps) {
             </td>
             <td className="text-right tabular-nums text-muted">{fmt((input.totalFat * sum) / 100)} g</td>
             <td colSpan={2} className="text-right text-xs text-muted">
-              {input.lyeType}-VZ Ø{' '}
+              {sapBasis(input.lyeType)}-VZ Ø{' '}
               {fmt(
                 input.fats.reduce((s, f) => {
                   const fat = FATS.find((x) => x.id === f.fatId)
-                  return s + (fat ? sapValue(f.sapKohOverride ?? fat.sapKoh, input.lyeType) * f.percent : 0)
+                  return s + (fat ? sapValue(f.sapKohOverride ?? fat.sapKoh, sapBasis(input.lyeType)) * f.percent : 0)
                 }, 0) / (sum || 1),
                 4,
               )}

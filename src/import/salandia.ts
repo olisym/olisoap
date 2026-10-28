@@ -64,6 +64,8 @@ const RULES: Rule[] = [
   [/rapsöl/i, { category: 'fat', fatId: 'canola' }],
   [/hanföl/i, { category: 'fat', fatId: 'hemp' }],
   [/bienenwachs/i, { category: 'fat', fatId: 'beeswax' }],
+  [/stearinsäure/i, { category: 'fat', fatId: 'stearic-acid' }],
+  [/glycerin/i, { category: 'additive', additiveId: 'glycerin' }],
   [/natriumlaktat/i, { category: 'additive', additiveId: 'sodium-lactate-60' }],
   [/seidenprotein|silkprotein/i, { category: 'additive', additiveId: 'silk-protein' }],
   [/zitronensäure/i, { category: 'additive', additiveId: 'citric-anhydrous' }],

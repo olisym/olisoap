@@ -29,7 +29,7 @@ export interface Consumption {
 export function needsOf(r: RecipeResult): Need[] {
   return [
     ...r.fats.map((l) => ({ key: `fat:${l.fat.id}` as MaterialKey, name: l.fat.name, grams: l.grams })),
-    { key: `lye:${r.input.lyeType}` as MaterialKey, name: r.input.lyeType, grams: r.lyeWeighed },
+    ...r.lyeParts.map((p) => ({ key: `lye:${p.type}` as MaterialKey, name: p.type, grams: p.weighed })),
     ...r.additives.map((a) => ({ key: `additive:${a.additive.id}` as MaterialKey, name: a.additive.name, grams: a.grams })),
   ].filter((n) => n.grams > 0)
 }

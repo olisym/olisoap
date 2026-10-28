@@ -7,6 +7,7 @@ import type {
   FattyAcids,
   LyeType,
   RecipeInput,
+  RecipeLye,
   SoapProperties,
   WaterMode,
 } from './types'
@@ -20,6 +21,31 @@ export const MOLAR_MASS = { NaOH: 40.0, KOH: 56.11 } as const
 export function sapValue(sapKoh: number, lyeType: LyeType): number {
   const perGramKoh = sapKoh / 1000
   return lyeType === 'KOH' ? perGramKoh : (perGramKoh * MOLAR_MASS.NaOH) / MOLAR_MASS.KOH
+}
+
+/** In welcher Lauge Verseifungszahlen gerechnet werden. Mischlauge rechnet in NaOH-Äquivalenten. */
+export function sapBasis(lye: RecipeLye): LyeType {
+  return lye === 'KOH' ? 'KOH' : 'NaOH'
+}
+
+export interface LyePart {
+  type: LyeType
+  /** Reine Lauge dieser Sorte in g. */
+  pure: number
+  /** Einzuwiegende Menge inkl. Reinheit. */
+  weighed: number
+  purity: number
+}
+
+/** Teilt die benötigte reine Lauge (in Einheiten von sapBasis) auf die einzuwiegenden Sorten auf. */
+export function lyeParts(input: RecipeInput, lyePure: number): LyePart[] {
+  const part = (type: LyeType, pure: number, purity: number): LyePart => ({ type, pure, purity, weighed: pure / (purity / 100) })
+  if (input.lyeType !== 'dual') return [part(input.lyeType, lyePure, input.lyePurity)]
+  const share = (input.kohShare ?? 0) / 100
+  return [
+    part('NaOH', lyePure * (1 - share), input.lyePurity),
+    part('KOH', (lyePure * share * MOLAR_MASS.KOH) / MOLAR_MASS.NaOH, input.kohPurity ?? 90),
+  ].filter((p) => p.pure > 0)
 }
 
 export interface FatLine {
@@ -46,12 +72,13 @@ export interface RecipeResult {
   fats: FatLine[]
   additives: AdditiveLine[]
   percentSum: number
-  /** Reine Lauge für die Fette nach Abzug der Überfettung. */
+  /** Reine Lauge für die Fette nach Abzug der Überfettung (in Einheiten von sapBasis). */
   lyeForFats: number
   lyeForAdditives: number
   lyePure: number
-  /** Einzuwiegende Lauge unter Berücksichtigung der Reinheit. */
+  /** Einzuwiegende Lauge unter Berücksichtigung der Reinheit, bei Mischlauge die Summe beider Sorten. */
   lyeWeighed: number
+  lyeParts: LyePart[]
   water: number
   waterFromAdditives: number
   /** Laugenkonzentration der angesetzten Lauge: Lauge / (Lauge + Wasser). */
@@ -127,7 +154,7 @@ export function calculate(input: RecipeInput): RecipeResult {
     const fat = resolveFat(rf.fatId)
     const sapKoh = rf.sapKohOverride ?? fat.sapKoh
     const grams = (input.totalFat * rf.percent) / 100
-    return { fat, percent: rf.percent, grams, sapKoh, lyeFull: grams * sapValue(sapKoh, input.lyeType) }
+    return { fat, percent: rf.percent, grams, sapKoh, lyeFull: grams * sapValue(sapKoh, sapBasis(input.lyeType)) }
   })
   const percentSum = fats.reduce((s, l) => s + l.percent, 0)
 
@@ -139,7 +166,7 @@ export function calculate(input: RecipeInput): RecipeResult {
       additive,
       percentOfFats: ra.percentOfFats,
       grams,
-      lyeConsumed: grams * (additive.neutralizes?.[input.lyeType] ?? 0),
+      lyeConsumed: grams * (additive.neutralizes?.[sapBasis(input.lyeType)] ?? 0),
       water: grams * (additive.waterFraction ?? 0),
       reason: ra.reason,
     }
@@ -148,7 +175,8 @@ export function calculate(input: RecipeInput): RecipeResult {
   const lyeForFats = fats.reduce((s, l) => s + l.lyeFull, 0) * (1 - input.superfat / 100)
   const lyeForAdditives = additives.reduce((s, a) => s + a.lyeConsumed, 0)
   const lyePure = lyeForFats + lyeForAdditives
-  const lyeWeighed = lyePure / (input.lyePurity / 100)
+  const parts = lyeParts(input, lyePure)
+  const lyeWeighed = parts.reduce((s, p) => s + p.weighed, 0)
   const water = waterAmount(input.water, input.totalFat, lyeWeighed)
   const waterFromAdditives = additives.reduce((s, a) => s + a.water, 0)
 
@@ -161,6 +189,7 @@ export function calculate(input: RecipeInput): RecipeResult {
     lyeForAdditives,
     lyePure,
     lyeWeighed,
+    lyeParts: parts,
     water,
     waterFromAdditives,
     lyeConcentration: lyeWeighed + water > 0 ? (lyeWeighed / (lyeWeighed + water)) * 100 : 0,
