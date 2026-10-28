@@ -53,7 +53,9 @@ docs/         Vorlage für die Server-Konfiguration
 
 Ein Push auf `main` baut die App zusätzlich mit Basis `/` und legt das Ergebnis in den Branch `deploy`.
 Plesk zieht diesen Branch per Git-Bereitstellung nach `httpdocs`. Die Datenbank-Zugangsdaten stehen in
-`olisoap-config.php` **eine Ebene über `httpdocs`** (Vorlage: `docs/olisoap-config.sample.php`) und nie im Repository.
+`olisoap-config.php` (Vorlage: `docs/olisoap-config.sample.php`), nie im Repository. Gesucht wird eine Ebene über
+`httpdocs`, in `httpdocs` und in `httpdocs/api`; mit dem Plesk-Standard für `open_basedir` funktioniert nur `httpdocs`.
+Diagnose: `api/index.php?a=health`.
 
 Alle Werkzeuge (Korrektur, Profilprüfung, künftig der Optimierer) rechnen über dieselben Kernfunktionen.
 

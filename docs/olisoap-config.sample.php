@@ -1,6 +1,8 @@
 <?php
-// Vorlage für die Sync-API. Als "olisoap-config.php" EINE EBENE ÜBER httpdocs ablegen, also z. B.
-//   /olisoap.error13.de/olisoap-config.php
+// Vorlage für die Sync-API. Als "olisoap-config.php" ablegen, und zwar
+//   - eine Ebene über httpdocs, falls PHP dort lesen darf (open_basedir), sonst
+//   - direkt in httpdocs (bei Plesk-Standard: open_basedir = {DOCROOT}). Im Browser bleibt die Datei leer,
+//     weil PHP sie ausführt und sie nur ein Array zurückgibt.
 // Diese Datei gehört nie ins Repository.
 return [
     // MySQL/MariaDB bei Netcup: Host steht im Plesk unter Datenbanken (oft "localhost").
