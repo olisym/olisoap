@@ -1,3 +1,4 @@
+<IfModule mod_headers.c>
 # Service Worker und Startseite nie zwischenspeichern, damit Updates sofort ankommen.
 <FilesMatch "^(sw\.js|index\.html|manifest\.webmanifest|registerSW\.js)$">
   Header set Cache-Control "no-cache"
@@ -8,3 +9,4 @@
 </FilesMatch>
 Header set X-Content-Type-Options "nosniff"
 Header set Referrer-Policy "same-origin"
+</IfModule>
