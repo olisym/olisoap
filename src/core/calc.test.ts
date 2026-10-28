@@ -38,6 +38,17 @@ describe('calculate', () => {
     expect(calculate({ ...base, lyePurity: 90, lyeType: 'KOH' }).lyeWeighed).toBeCloseTo(190 / 0.9, 1)
   })
 
+  it('Mischlauge: teilt in NaOH und KOH auf', () => {
+    const r = calculate({ ...base, lyeType: 'dual', kohShare: 40, kohPurity: 90 })
+    const naoh = r.lyeParts.find((p) => p.type === 'NaOH')!
+    const koh = r.lyeParts.find((p) => p.type === 'KOH')!
+    expect(naoh.weighed).toBeCloseTo(135.4 * 0.6, 1)
+    expect(koh.weighed).toBeCloseTo((190 * 0.4) / 0.9, 1)
+    expect(r.lyeWeighed).toBeCloseTo(naoh.weighed + koh.weighed, 6)
+    // Korrektur: 5 % mehr Fett → 5 % mehr Mischlauge
+    expect(correct(r, { fatGrams: [1050] }).addLye).toBeCloseTo(r.lyeWeighed * 0.05, 4)
+  })
+
   it('Wassermodi', () => {
     const conc = calculate({ ...base, water: { mode: 'concentration', value: 33 } })
     expect(conc.lyeConcentration).toBeCloseTo(33, 6)

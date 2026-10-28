@@ -57,7 +57,7 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
   const fatPhase = r.additives.filter((a) => a.additive.phase === 'fats')
   const tracePhase = r.additives.filter((a) => a.additive.phase === 'trace')
   const acids = lyePhase.filter((a) => a.lyeConsumed > 0)
-  const purity = input.lyePurity / 100
+  const acidShare = r.lyePure > 0 ? r.lyeForAdditives / r.lyePure : 0
 
   return (
     <article className="worksheet mx-auto max-w-3xl">
@@ -71,14 +71,16 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
       </div>
 
       <header className="border-b-2 border-ink pb-3">
-        <p className="text-xs tracking-widest text-muted uppercase">Arbeitsblatt · Kaltverfahren</p>
+        <p className="text-xs tracking-widest text-muted uppercase">Arbeitsblatt</p>
         <h1 className="text-2xl font-bold">{recipe.name}</h1>
         {recipe.description && <p className="text-sm text-muted">{recipe.description}</p>}
         <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
           <span>Fett: <b>{fmt(input.totalFat)} g</b></span>
           <span>Überfettung: <b>{fmt(input.superfat, 1)} %</b></span>
           <span>Wasser: <b>{fmt(r.water)} g</b></span>
-          <span>{input.lyeType}: <b>{fmt(r.lyeWeighed, 1)} g</b></span>
+          {r.lyeParts.map((p) => (
+            <span key={p.type}>{p.type}: <b>{fmt(p.weighed, 1)} g</b></span>
+          ))}
           <span>Konzentration: <b>{fmt(r.lyeConcentration, 1)} %</b></span>
         </p>
       </header>
@@ -90,16 +92,19 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
             {acids.map((a) => (
               <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note="Zuerst vollständig im kalten Wasser lösen, dann erst die Lauge." />
             ))}
-            <Row
-              name={`${input.lyeType}${input.lyePurity < 100 ? ` (${fmt(input.lyePurity, 1)} %)` : ''}`}
-              grams={r.lyeWeighed}
-              share={`${fmt(input.superfat, 1)} % ÜF`}
-              note={
-                r.lyeForAdditives > 0
-                  ? `${fmt(r.lyeForFats / purity, 1)} g für Fette + ${fmt(r.lyeForAdditives / purity, 1)} g für Säure`
-                  : undefined
-              }
-            />
+            {r.lyeParts.map((p) => (
+              <Row
+                key={p.type}
+                name={`${p.type}${p.purity < 100 ? ` (${fmt(p.purity, 1)} %)` : ''}`}
+                grams={p.weighed}
+                share={`${fmt(input.superfat, 1)} % ÜF`}
+                note={
+                  acidShare > 0
+                    ? `${fmt(p.weighed * (1 - acidShare), 1)} g für Fette + ${fmt(p.weighed * acidShare, 1)} g für Säure`
+                    : undefined
+                }
+              />
+            ))}
             {lyePhase
               .filter((a) => a.lyeConsumed === 0)
               .map((a) => (

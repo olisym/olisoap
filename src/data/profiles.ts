@@ -24,12 +24,25 @@ export const PROFILES: TargetProfile[] = [
     description: 'Gründliche, aber nicht strippende Reinigung, eher niedrige Überfettung, damit feines Haar nicht beschwert wird.',
     properties: {
       hardness: { min: 35, max: 50 },
-      cleansing: { min: 12, max: 20 },
+      cleansing: { min: 15, max: 25 },
       conditioning: { min: 45, max: 65 },
       bubbly: { min: 20 },
       polyunsaturated: { max: 15 },
     },
     superfat: { min: 3, max: 7 },
+  },
+  {
+    id: 'shave-brush',
+    name: 'Rasierseife – Pinsel',
+    description: 'Dichter, stabiler, gleitfähiger Schaum. Viel Stearin-/Palmitinsäure, moderate Reinigung, niedrige Überfettung (zu viel freies Fett zerstört den Schaum).',
+    properties: {
+      hardness: { min: 50 },
+      cleansing: { min: 12, max: 25 },
+      bubbly: { min: 20 },
+      creamy: { min: 45 },
+      polyunsaturated: { max: 10 },
+    },
+    superfat: { min: 2, max: 6 },
   },
 ]
 

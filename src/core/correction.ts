@@ -1,4 +1,4 @@
-import { sapValue, superfatFor, type RecipeResult } from './calc'
+import { sapBasis, sapValue, superfatFor, type RecipeResult } from './calc'
 
 // Korrekturrechner: Ist-Einwaage weicht vom Plan ab. Die Lauge ist evtl. schon angesetzt.
 
@@ -29,12 +29,13 @@ export interface Correction {
 
 export function correct(result: RecipeResult, actual: ActualWeights): Correction {
   const { input } = result
-  const purity = input.lyePurity / 100
+  // Verhältnis reine Lauge : Einwaage, gilt auch für Mischlauge (feste Mischung).
+  const purity = result.lyeWeighed > 0 ? result.lyePure / result.lyeWeighed : 1
   const sf = input.superfat / 100
 
   const fatGrams = result.fats.map((l, i) => actual.fatGrams?.[i] ?? l.grams)
   const lyeFullActual = result.fats.reduce(
-    (s, l, i) => s + fatGrams[i] * sapValue(l.sapKoh, input.lyeType),
+    (s, l, i) => s + fatGrams[i] * sapValue(l.sapKoh, sapBasis(input.lyeType)),
     0,
   )
   const lyeWeighedRequired = (lyeFullActual * (1 - sf) + result.lyeForAdditives) / purity
