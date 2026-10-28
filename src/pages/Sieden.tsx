@@ -84,7 +84,6 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
   const [lyeTemp, setLyeTemp] = useState<number>()
   const [fatTemp, setFatTemp] = useState<number>()
   const [notes, setNotes] = useState('')
-  const [recipient, setRecipient] = useState('')
   const [date, setDate] = useState(today())
   const [cureWeeks, setCureWeeks] = useState<number | undefined>(recipe.input.lyeType === 'dual' ? 2 : 5)
   const [deduct, setDeduct] = useState(true)
@@ -110,7 +109,7 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
       date,
       cureWeeks: cureWeeks ?? 0,
       deductStock: deduct,
-      extra: { lyeTemp, fatTemp, notes: notes || undefined, recipient: recipient || undefined },
+      extra: { lyeTemp, fatTemp, notes: notes || undefined },
     })
     navigate(`/chargen/${batch.id}`)
   }
@@ -211,10 +210,6 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
               <label className="label">
                 Reifezeit
                 <NumberField value={cureWeeks} digits={0} suffix="Wochen" onChange={setCureWeeks} />
-              </label>
-              <label className="label sm:col-span-2">
-                Für wen?
-                <input className="field" placeholder="leer = für mich" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
               </label>
               <label className="label sm:col-span-2">
                 Notizen
