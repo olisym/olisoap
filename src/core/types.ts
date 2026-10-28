@@ -24,6 +24,8 @@ export interface Fat {
   sapKoh: number
   fattyAcids: FattyAcids
   iodine: number
+  /** Dichte in g/ml bei Raumtemperatur (für Ware, die nach Volumen verkauft wird). Standard 0,92. */
+  density?: number
   /** Kurze, sachliche Notiz: wofür das Fett taugt, was es kritisch macht. */
   notes?: string
 }
@@ -73,6 +75,8 @@ export interface Additive {
   /** Wasseranteil des Zusatzes (0–1), z. B. Natriumlaktat 60 % → 0,4 Wasser. */
   waterFraction?: number
   typicalPercent?: [number, number]
+  /** Dichte in g/ml, falls nach Volumen verkauft. */
+  density?: number
   purpose: string
   /** Sachliche Einordnung der Belege (was ist gut belegt, was ist Behauptung). */
   evidence: string

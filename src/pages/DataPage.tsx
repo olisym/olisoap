@@ -12,13 +12,13 @@ export function DataPage() {
     a.download = `olisoap-sicherung-${backup.exportedAt.slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(a.href)
-    setStatus(`${backup.recipes.length} Rezepte exportiert.`)
+    setStatus(`${backup.recipes.length} Rezepte, ${backup.products.length} Artikel und ${backup.lots.length} Gebinde exportiert.`)
   }
 
   async function upload(file: File) {
     try {
       const n = await importBackup(JSON.parse(await file.text()))
-      setStatus(`${n} Rezepte importiert.`)
+      setStatus(`${n.recipes} Rezepte, ${n.products} Artikel, ${n.purchases} Einkäufe und ${n.lots} Gebinde eingespielt.`)
     } catch (e) {
       setStatus(`Fehler: ${(e as Error).message}`)
     }
@@ -41,7 +41,7 @@ export function DataPage() {
         </label>
       </div>
       {status && <p className="text-sm">{status}</p>}
-      <p className="text-xs text-muted">Beim Einspielen werden Rezepte mit gleicher ID überschrieben, andere bleiben erhalten.</p>
+      <p className="text-xs text-muted">Beim Einspielen werden Einträge mit gleicher ID überschrieben, andere bleiben erhalten.</p>
     </section>
   )
 }

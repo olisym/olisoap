@@ -14,7 +14,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'coconut',
-    name: 'Kokosöl (raffiniert)',
+    name: 'Kokosöl',
     sapKoh: 257,
     fattyAcids: { caprylic: 8, capric: 7, lauric: 48, myristic: 19, palmitic: 9, stearic: 3, oleic: 8, linoleic: 2 },
     iodine: 10,
@@ -87,6 +87,7 @@ export const FATS: Fat[] = [
     sapKoh: 180,
     fattyAcids: { palmitic: 2, ricinoleic: 90, oleic: 4, linoleic: 4 },
     iodine: 86,
+    density: 0.96,
     notes: 'Stabilisiert den Schaum. Über ca. 10–15 % wird die Seife klebrig und weich.',
   },
   {
@@ -156,6 +157,36 @@ export const FATS: Fat[] = [
     iodine: 180,
   },
   {
+    id: 'safflower',
+    name: 'Distelöl (Safloröl)',
+    sapKoh: 192,
+    fattyAcids: { palmitic: 7, stearic: 2, oleic: 13, linoleic: 78 },
+    iodine: 145,
+    notes: 'Klassisches (nicht High-Oleic) Distelöl ist sehr linolsäurereich und in Seife entsprechend ranzanfällig.',
+  },
+  {
+    id: 'milk-thistle',
+    name: 'Mariendistelöl',
+    sapKoh: 190,
+    fattyAcids: { palmitic: 8, stearic: 4, oleic: 25, linoleic: 57 },
+    iodine: 120,
+  },
+  {
+    id: 'sesame',
+    name: 'Sesamöl',
+    sapKoh: 188,
+    fattyAcids: { palmitic: 9, stearic: 5, oleic: 40, linoleic: 43 },
+    iodine: 110,
+  },
+  {
+    id: 'broccoli-seed',
+    name: 'Brokkolisamenöl',
+    sapKoh: 172,
+    fattyAcids: { palmitic: 3, oleic: 14, linoleic: 11, linolenic: 9 },
+    iodine: 105,
+    notes: 'Rund die Hälfte ist Erucasäure (C22:1), die in den Kennzahlen nicht erfasst wird. Verseifungszahl entsprechend niedriger.',
+  },
+  {
     id: 'grapeseed',
     name: 'Traubenkernöl',
     sapKoh: 181,
@@ -196,6 +227,7 @@ export const FATS: Fat[] = [
     sapKoh: 92,
     fattyAcids: { oleic: 10 },
     iodine: 83,
+    density: 0.865,
     notes: 'Chemisch ein Wachs, verseift nur zur Hälfte (Fettalkohole bleiben übrig). Hauptbestandteil Eicosensäure, die in den Kennzahlen nicht erfasst wird.',
   },
   {

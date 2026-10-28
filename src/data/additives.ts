@@ -41,6 +41,7 @@ export const ADDITIVES: Additive[] = [
     name: 'Natriumlaktat (60 % Lösung)',
     phase: 'lye',
     waterFraction: 0.4,
+    density: 1.33,
     typicalPercent: [1, 3],
     purpose: 'Härtere Seife früher aus der Form, leichteres Schneiden.',
     evidence: 'Härtender Effekt in der Praxis gut reproduzierbar. Pflegewirkung auf die Haut nach dem Abspülen kaum relevant.',
