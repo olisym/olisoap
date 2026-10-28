@@ -6,6 +6,7 @@ import type { Fat } from '../core/types'
 export const FATS: Fat[] = [
   {
     id: 'olive',
+    inci: { sodium: 'Sodium Olivate', potassium: 'Potassium Olivate', oil: 'Olea Europaea Fruit Oil' },
     name: 'Olivenöl',
     sapKoh: 190,
     fattyAcids: { palmitic: 13, stearic: 3, oleic: 71, linoleic: 10, linolenic: 1 },
@@ -14,6 +15,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'coconut',
+    inci: { sodium: 'Sodium Cocoate', potassium: 'Potassium Cocoate', oil: 'Cocos Nucifera Oil' },
     name: 'Kokosöl',
     sapKoh: 257,
     fattyAcids: { caprylic: 8, capric: 7, lauric: 48, myristic: 19, palmitic: 9, stearic: 3, oleic: 8, linoleic: 2 },
@@ -22,6 +24,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'babassu',
+    inci: { sodium: 'Sodium Babassuate', potassium: 'Potassium Babassuate', oil: 'Orbignya Oleifera Seed Oil' },
     name: 'Babassuöl',
     sapKoh: 245,
     fattyAcids: { caprylic: 4, capric: 6, lauric: 50, myristic: 20, palmitic: 11, stearic: 4, oleic: 10, linoleic: 1 },
@@ -30,6 +33,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'palm-kernel',
+    inci: { sodium: 'Sodium Palm Kernelate', potassium: 'Potassium Palm Kernelate', oil: 'Elaeis Guineensis Kernel Oil' },
     name: 'Palmkernöl',
     sapKoh: 247,
     fattyAcids: { caprylic: 4, capric: 4, lauric: 49, myristic: 16, palmitic: 8, stearic: 2, oleic: 15, linoleic: 2 },
@@ -37,6 +41,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'shea',
+    inci: { sodium: 'Sodium Shea Butterate', potassium: 'Potassium Shea Butterate', oil: 'Butyrospermum Parkii Butter' },
     name: 'Sheabutter',
     sapKoh: 179,
     fattyAcids: { palmitic: 5, stearic: 40, oleic: 48, linoleic: 6 },
@@ -45,6 +50,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'cocoa',
+    inci: { sodium: 'Sodium Cocoa Butterate', potassium: 'Potassium Cocoa Butterate', oil: 'Theobroma Cacao Seed Butter' },
     name: 'Kakaobutter',
     sapKoh: 194,
     fattyAcids: { palmitic: 28, stearic: 33, oleic: 35, linoleic: 3 },
@@ -53,6 +59,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'mango',
+    inci: { oil: 'Mangifera Indica Seed Butter' },
     name: 'Mangobutter',
     sapKoh: 191,
     fattyAcids: { palmitic: 7, stearic: 42, oleic: 45, linoleic: 3 },
@@ -60,6 +67,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'almond',
+    inci: { sodium: 'Sodium Sweet Almondate', potassium: 'Potassium Sweet Almondate', oil: 'Prunus Amygdalus Dulcis Oil' },
     name: 'Mandelöl süß',
     sapKoh: 195,
     fattyAcids: { palmitic: 7, oleic: 71, linoleic: 18 },
@@ -68,6 +76,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'apricot-kernel',
+    inci: { sodium: 'Sodium Apricot Kernelate', potassium: 'Potassium Apricot Kernelate', oil: 'Prunus Armeniaca Kernel Oil' },
     name: 'Aprikosenkernöl',
     sapKoh: 195,
     fattyAcids: { palmitic: 6, oleic: 66, linoleic: 27 },
@@ -75,6 +84,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'avocado',
+    inci: { sodium: 'Sodium Avocadate', potassium: 'Potassium Avocadate', oil: 'Persea Gratissima Oil' },
     name: 'Avocadoöl',
     sapKoh: 187,
     fattyAcids: { palmitic: 20, palmitoleic: 6, stearic: 2, oleic: 58, linoleic: 12, linolenic: 1 },
@@ -83,6 +93,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'castor',
+    inci: { sodium: 'Sodium Castorate', potassium: 'Potassium Castorate', oil: 'Ricinus Communis Seed Oil' },
     name: 'Rizinusöl',
     sapKoh: 180,
     fattyAcids: { palmitic: 2, ricinoleic: 90, oleic: 4, linoleic: 4 },
@@ -92,6 +103,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'sunflower-ho',
+    inci: { sodium: 'Sodium Sunflowerseedate', potassium: 'Potassium Sunflowerseedate', oil: 'Helianthus Annuus Seed Oil' },
     name: 'Sonnenblumenöl High Oleic',
     sapKoh: 189,
     fattyAcids: { palmitic: 3, stearic: 4, oleic: 83, linoleic: 4 },
@@ -100,6 +112,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'sunflower',
+    inci: { sodium: 'Sodium Sunflowerseedate', potassium: 'Potassium Sunflowerseedate', oil: 'Helianthus Annuus Seed Oil' },
     name: 'Sonnenblumenöl (normal)',
     sapKoh: 189,
     fattyAcids: { palmitic: 7, stearic: 4, oleic: 16, linoleic: 70, linolenic: 1 },
@@ -108,6 +121,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'canola',
+    inci: { sodium: 'Sodium Canolate', potassium: 'Potassium Canolate', oil: 'Canola Oil' },
     name: 'Rapsöl',
     sapKoh: 186,
     fattyAcids: { palmitic: 4, stearic: 2, oleic: 61, linoleic: 21, linolenic: 9 },
@@ -115,6 +129,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'rice-bran',
+    inci: { oil: 'Oryza Sativa Bran Oil' },
     name: 'Reiskeimöl',
     sapKoh: 187,
     fattyAcids: { palmitic: 22, stearic: 3, oleic: 38, linoleic: 34, linolenic: 1 },
@@ -122,6 +137,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'macadamia',
+    inci: { oil: 'Macadamia Ternifolia Seed Oil' },
     name: 'Macadamianussöl',
     sapKoh: 195,
     fattyAcids: { palmitic: 9, palmitoleic: 19, stearic: 5, oleic: 59, linoleic: 2 },
@@ -129,6 +145,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'camellia',
+    inci: { oil: 'Camellia Oleifera Seed Oil' },
     name: 'Kamelienöl',
     sapKoh: 193,
     fattyAcids: { palmitic: 9, stearic: 2, oleic: 77, linoleic: 8 },
@@ -136,6 +153,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'argan',
+    inci: { sodium: 'Sodium Arganate', potassium: 'Potassium Arganate', oil: 'Argania Spinosa Kernel Oil' },
     name: 'Arganöl',
     sapKoh: 191,
     fattyAcids: { palmitic: 14, stearic: 6, oleic: 46, linoleic: 34 },
@@ -143,6 +161,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'hemp',
+    inci: { sodium: 'Sodium Hempseedate', potassium: 'Potassium Hempseedate', oil: 'Cannabis Sativa Seed Oil' },
     name: 'Hanföl',
     sapKoh: 193,
     fattyAcids: { palmitic: 6, stearic: 2, oleic: 12, linoleic: 57, linolenic: 21 },
@@ -151,6 +170,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'linseed',
+    inci: { sodium: 'Sodium Linseedate', potassium: 'Potassium Linseedate', oil: 'Linum Usitatissimum Seed Oil' },
     name: 'Leinöl',
     sapKoh: 190,
     fattyAcids: { palmitic: 6, stearic: 3, oleic: 19, linoleic: 24, linolenic: 47 },
@@ -158,6 +178,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'safflower',
+    inci: { oil: 'Carthamus Tinctorius Seed Oil' },
     name: 'Distelöl (Safloröl)',
     sapKoh: 192,
     fattyAcids: { palmitic: 7, stearic: 2, oleic: 13, linoleic: 78 },
@@ -166,6 +187,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'milk-thistle',
+    inci: { oil: 'Silybum Marianum Seed Oil' },
     name: 'Mariendistelöl',
     sapKoh: 190,
     fattyAcids: { palmitic: 8, stearic: 4, oleic: 25, linoleic: 57 },
@@ -173,6 +195,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'sesame',
+    inci: { oil: 'Sesamum Indicum Seed Oil' },
     name: 'Sesamöl',
     sapKoh: 188,
     fattyAcids: { palmitic: 9, stearic: 5, oleic: 40, linoleic: 43 },
@@ -180,6 +203,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'broccoli-seed',
+    inci: { oil: 'Brassica Oleracea Italica Seed Oil' },
     name: 'Brokkolisamenöl',
     sapKoh: 172,
     fattyAcids: { palmitic: 3, oleic: 14, linoleic: 11, linolenic: 9 },
@@ -188,6 +212,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'grapeseed',
+    inci: { sodium: 'Sodium Grapeseedate', potassium: 'Potassium Grapeseedate', oil: 'Vitis Vinifera Seed Oil' },
     name: 'Traubenkernöl',
     sapKoh: 181,
     fattyAcids: { palmitic: 7, stearic: 4, oleic: 16, linoleic: 70 },
@@ -195,6 +220,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'wheat-germ',
+    inci: { oil: 'Triticum Vulgare Germ Oil' },
     name: 'Weizenkeimöl',
     sapKoh: 185,
     fattyAcids: { palmitic: 17, stearic: 2, oleic: 17, linoleic: 58 },
@@ -202,6 +228,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'stearic-acid',
+    inci: { sodium: 'Sodium Stearate', potassium: 'Potassium Stearate', oil: 'Stearic Acid' },
     name: 'Stearinsäure (dreifach gepresst)',
     sapKoh: 207,
     fattyAcids: { palmitic: 45, stearic: 55 },
@@ -210,6 +237,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'palm',
+    inci: { sodium: 'Sodium Palmate', potassium: 'Potassium Palmate', oil: 'Elaeis Guineensis Oil' },
     name: 'Palmöl',
     sapKoh: 199,
     fattyAcids: { myristic: 1, palmitic: 44, stearic: 5, oleic: 39, linoleic: 10 },
@@ -217,6 +245,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'lard',
+    inci: { sodium: 'Sodium Lardate', potassium: 'Potassium Lardate', oil: 'Lard' },
     name: 'Schweineschmalz',
     sapKoh: 194,
     fattyAcids: { myristic: 1, palmitic: 28, stearic: 13, oleic: 46, linoleic: 6 },
@@ -224,6 +253,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'tallow',
+    inci: { sodium: 'Sodium Tallowate', potassium: 'Potassium Tallowate', oil: 'Tallow' },
     name: 'Rindertalg',
     sapKoh: 200,
     fattyAcids: { myristic: 4, palmitic: 28, stearic: 23, oleic: 36, linoleic: 3 },
@@ -231,6 +261,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'jojoba',
+    inci: { oil: 'Simmondsia Chinensis Seed Oil' },
     name: 'Jojobaöl (flüssiges Wachs)',
     sapKoh: 92,
     fattyAcids: { oleic: 10 },
@@ -240,6 +271,7 @@ export const FATS: Fat[] = [
   },
   {
     id: 'beeswax',
+    inci: { oil: 'Cera Alba' },
     name: 'Bienenwachs',
     sapKoh: 94,
     fattyAcids: {},

@@ -4,13 +4,17 @@ Werkstatt-Software für Heimseifensieder: Rezepte entwerfen und berechnen, Arbei
 Später kommen Lager, Kosten, Chargen und ein Reste-Optimierer dazu. Leitlinie: **evidenzbasiert, ohne Nonsens.**
 Jede Zutat braucht einen Grund.
 
-## Stand (v0.5)
+## Stand (v0.6)
 
 - **Übersicht** nach Anliegen: Sieden, Rezepte, Vorrat, Einkauf, Entwickeln, dazu Reifeprozess, Hinweise und „Was kann ich sieden?“
 - **Geführtes Sieden**: Rezept wählen, Menge oder Stückzahl, Vorrats-Check, Siede-Modus mit großen Zahlen,
   Abhaken und Live-Korrektur bei Ist-Abweichungen, Charge anlegen
 - **Einkauf**: Bedarf aus geplanten Suden, günstigste aktuelle Packung, Einkaufsliste mit Shop-Links,
   „bestellt“ und Wareneingang direkt ins Lager
+- **Chargen-Etappen**: Gesiedet → Ausgeformt & geschnitten (Stückzahl, Gesamtgewicht) → Gereift → Geprüft → Etikettiert,
+  fällige Etappen erscheinen unter „Heute zu tun“
+- **Etiketten** aus der Charge: A4-Bogen 3 × 8 (70 × 37 mm), Zutaten deutsch oder als INCI, Haltbarkeitsvorschlag
+- **Salandia-Katalog-Import**: aktuelle Shop-Preise für alle Artikel, Bestellübersicht und Katalog werden automatisch erkannt
 - **Vorrat** als Übersicht mit Füllstand, MHD und Nachbestellen per Klick
 - Dunkles Instrumententafel-Design (helles wählbar), Navigationsleiste bzw. untere Leiste auf dem Handy,
   Touch-Ziele ab 44 px

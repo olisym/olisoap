@@ -67,6 +67,17 @@ export interface Batch {
   notes?: string
   weighings: Weighing[]
   outflows: Outflow[]
+  /** Gesamtgewicht aller Stücke beim Schneiden in g. */
+  cutWeight?: number
+  /** Etikett gedruckt am. */
+  labeledAt?: string
+  /** "Am besten verwenden bis" für das Etikett. Fehlt = Vorschlag aus MHD der Fette. */
+  bestUse?: string
+}
+
+/** Rasierseife im Tiegel wird nicht ausgeformt und geschnitten. */
+export function isTub(b: Batch): boolean {
+  return b.recipe.input.lyeType === 'dual'
 }
 
 export function readyDate(b: Batch): string {

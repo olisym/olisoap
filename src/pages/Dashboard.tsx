@@ -1,10 +1,13 @@
-import { BookOpen, CalendarClock, FlaskConical, Hourglass, Package, PencilRuler, ShoppingCart, TriangleAlert } from 'lucide-react'
+import { BookOpen, CalendarClock, FlaskConical, Hourglass, ListChecks, Package, PencilRuler, Scale, Scissors, ShieldCheck, ShoppingCart, Tag, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { addDays } from '../core/batch'
-import { barsLeft, readyDate } from '../db'
+import { allTasks, type TaskKind } from '../core/tasks'
+import { barsLeft, isTub, readyDate } from '../db'
 import { fmt } from '../format'
 import { daysBetween, de, groupRecipes, recipeFeasibility, today, useWorkshop } from '../hooks'
 import { Bar, Chip, Kpi, Panel, StatusDot, TaskTile } from '../components/ui'
+
+const TASK_ICON: Record<TaskKind, LucideIcon> = { cut: Scissors, weigh: Scale, test: ShieldCheck, label: Tag }
 
 function greeting(): string {
   const h = new Date().getHours()
@@ -30,6 +33,22 @@ export function Dashboard() {
 
   const productName = (id: string) => inventory.products.find((p) => p.id === id)?.name ?? 'Gebinde'
   const in90 = addDays(now, 90)
+  const tasks = allTasks(
+    batches.map((b) => ({
+      id: b.id,
+      name: b.recipe.name,
+      number: b.number,
+      date: b.date,
+      readyDate: readyDate(b),
+      tub: isTub(b),
+      unmoldedAt: b.unmoldedAt,
+      weighings: b.weighings,
+      tested: b.tested,
+      labeledAt: b.labeledAt,
+      barsLeft: barsLeft(b),
+    })),
+    now,
+  )
   const alerts = [
     ...inventory.lots
       .filter((l) => l.gramsLeft > 0 && l.bestBefore && l.bestBefore <= in90)
@@ -41,12 +60,6 @@ export function Dashboard() {
         detail: l.bestBefore! < now ? `MHD abgelaufen ${de(l.bestBefore)}` : `MHD ${de(l.bestBefore)}`,
         to: '/lager',
       })),
-    ...curing
-      .filter((b) => {
-        const last = b.weighings.map((x) => x.date).sort().at(-1)
-        return !last || addDays(last, 7) <= now
-      })
-      .map((b) => ({ key: `w${b.id}`, tone: 'warn' as const, text: `${b.recipe.name} wiegen`, detail: `Charge ${b.number}`, to: `/chargen/${b.id}` })),
   ]
 
   return (
@@ -125,11 +138,26 @@ export function Dashboard() {
           )}
         </Panel>
 
-        <Panel title="Hinweise" icon={TriangleAlert}>
-          {alerts.length === 0 ? (
+        <Panel title="Heute zu tun" icon={ListChecks}>
+          {tasks.length + alerts.length === 0 ? (
             <p className="text-sm text-muted">Nichts zu tun.</p>
           ) : (
             <ul className="space-y-1">
+              {tasks.map((t) => {
+                const Icon = TASK_ICON[t.kind]
+                return (
+                  <li key={`${t.batchId}${t.kind}`}>
+                    <Link to={`/chargen/${t.batchId}`} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2">
+                      <Icon size={16} className="shrink-0 text-accent" aria-hidden />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{t.title}</span>
+                        <span className="block truncate text-xs text-muted">{t.detail}</span>
+                      </span>
+                      {t.due < now && <span className="text-xs whitespace-nowrap text-warn">seit {de(t.due)}</span>}
+                    </Link>
+                  </li>
+                )
+              })}
               {alerts.slice(0, 8).map((a) => (
                 <li key={a.key}>
                   <Link to={a.to} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-2">

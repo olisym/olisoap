@@ -1,12 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Check, Scissors, Tag } from 'lucide-react'
 import { NumberField } from '../components/NumberField'
 import { addDays, cureStatus, earliestFatBestBefore, type Weighing } from '../core/batch'
 import { calculate } from '../core/calc'
 import { evaluate } from '../core/evaluate'
 import { PROFILES_BY_ID } from '../data/profiles'
-import { barsLeft, db, deleteBatch, readyDate, type Batch } from '../db'
+import { barsLeft, db, deleteBatch, isTub, readyDate, type Batch } from '../db'
 import { fmt } from '../format'
 
 export const today = () => new Date().toISOString().slice(0, 10)
@@ -103,6 +104,9 @@ export function BatchDetail() {
             {batch.recipe.name} <StatusBadge batch={batch} />
           </h1>
         </div>
+        <Link className="btn" to={`/chargen/${batch.id}/etikett`}>
+          <Tag size={16} /> Etikett
+        </Link>
         <Link className="btn" to={`/chargen/${batch.id}/druck`}>
           Arbeitsblatt
         </Link>
@@ -113,6 +117,8 @@ export function BatchDetail() {
           Löschen
         </button>
       </header>
+
+      <Lifecycle batch={batch} update={update} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card grid gap-4 sm:grid-cols-2">
@@ -297,6 +303,97 @@ function Weighings({ batch, update, cure }: { batch: Batch; update: (p: Partial<
         </p>
       )}
       {sorted.length === 1 && <p className="mt-2 text-xs text-muted">Nächste Wägung am {de(addDays(sorted[0].date, 7))}.</p>}
+    </div>
+  )
+}
+
+type Stage = { key: string; label: string; done: boolean; detail?: string }
+
+/** Etappen einer Charge, wie sie in der Werkstatt ablaufen. Die aktuelle Etappe hat ihr Werkzeug direkt dabei. */
+function Lifecycle({ batch, update }: { batch: Batch; update: (p: Partial<Batch>) => void }) {
+  const tub = isTub(batch)
+  const now = today()
+  const cure = cureStatus(batch.weighings)
+  const ready = readyDate(batch) <= now
+  const stages: Stage[] = [
+    { key: 'boil', label: 'Gesiedet', done: true, detail: de(batch.date) },
+    ...(tub ? [] : [{ key: 'cut', label: 'Ausgeformt & geschnitten', done: !!batch.unmoldedAt, detail: batch.unmoldedAt ? `${de(batch.unmoldedAt)} · ${batch.bars} Stk` : undefined }]),
+    { key: 'cure', label: 'Gereift', done: ready && (cure.stable || batch.weighings.length < 2), detail: `ab ${de(readyDate(batch))}` },
+    { key: 'test', label: 'Geprüft', done: !!batch.tested },
+    { key: 'label', label: 'Etikettiert', done: !!batch.labeledAt, detail: batch.labeledAt ? de(batch.labeledAt) : undefined },
+  ]
+  const current = stages.find((s) => !s.done)
+
+  return (
+    <section className="card" aria-label="Etappen">
+      <ol className="grid gap-3 sm:grid-cols-5">
+        {stages.map((s) => (
+          <li key={s.key} className="flex items-center gap-3 sm:flex-col sm:items-start">
+            <span className={`grid size-8 shrink-0 place-items-center rounded-full border-2 ${s.done ? 'border-ok bg-ok text-accent-ink' : s === current ? 'border-accent text-accent' : 'border-line text-muted'}`}>
+              {s.done ? <Check size={16} /> : <span className="size-2 rounded-full bg-current" />}
+            </span>
+            <span>
+              <span className={`block text-sm font-medium ${s === current ? 'text-accent' : ''}`}>{s.label}</span>
+              {s.detail && <span className="block text-xs text-muted">{s.detail}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+      {current?.key === 'cut' && <CutForm batch={batch} update={update} />}
+      {current?.key === 'test' && ready && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <p className="flex-1 text-sm text-muted">Zungentest: kurz mit der Zungenspitze an die Seife. Prickelt es wie eine 9-V-Batterie, braucht sie noch Zeit.</p>
+          <button className="btn-primary" onClick={() => update({ tested: true })}>
+            <Check size={18} /> Test bestanden
+          </button>
+        </div>
+      )}
+      {current?.key === 'label' && (
+        <div className="mt-4 flex justify-end border-t border-line pt-4">
+          <Link className="btn-primary" to={`/chargen/${batch.id}/etikett`}>
+            <Tag size={18} /> Etiketten drucken
+          </Link>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** Ausformen und Schneiden: Stücke zählen, alle zusammen wiegen. Das Ø-Gewicht wird erste Wägung des Probestücks. */
+function CutForm({ batch, update }: { batch: Batch; update: (p: Partial<Batch>) => void }) {
+  const [date, setDate] = useState(today())
+  const [count, setCount] = useState<number | undefined>(batch.bars)
+  const [total, setTotal] = useState<number>()
+  const avg = count && total ? total / count : undefined
+  return (
+    <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-[auto_8rem_10rem_1fr_auto] sm:items-end">
+      <label className="label">
+        Geschnitten am
+        <input type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} />
+      </label>
+      <label className="label">
+        Stücke
+        <NumberField value={count} digits={0} suffix="Stk" onChange={setCount} />
+      </label>
+      <label className="label">
+        Alle zusammen
+        <NumberField value={total} digits={0} suffix="g" onChange={setTotal} />
+      </label>
+      <p className="text-sm text-muted">{avg ? `Ø ${fmt(avg, 1)} g pro Stück, das wird die erste Wägung des Probestücks.` : 'Alle Stücke auf einmal auf die Waage.'}</p>
+      <button
+        className="btn-primary"
+        disabled={!count}
+        onClick={() =>
+          update({
+            unmoldedAt: date,
+            bars: count!,
+            cutWeight: total,
+            weighings: avg ? [...batch.weighings, { date, grams: Math.round(avg * 10) / 10 }] : batch.weighings,
+          })
+        }
+      >
+        <Scissors size={18} /> Geschnitten
+      </button>
     </div>
   )
 }
