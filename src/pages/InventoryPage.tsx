@@ -146,12 +146,14 @@ function AddLot({ onDone }: { onDone: () => void }) {
   const [count, setCount] = useState<number | undefined>(1)
   const [price, setPrice] = useState<number>()
   const [bestBefore, setBestBefore] = useState('')
+  const [weighed, setWeighed] = useState<number>()
   if (!inv) return null
   const products = inv.products
     .filter((p) => p.unit !== 'Stk')
     .sort((a, b) => Number(!SOAP_CATEGORIES.includes(a.category)) - Number(!SOAP_CATEGORIES.includes(b.category)) || a.name.localeCompare(b.name))
   const product = products.find((p) => p.id === productId)
-  const grams = product ? (packageGrams(product) ?? 0) * (count ?? 0) : 0
+  const nominal = product ? (packageGrams(product) ?? 0) * (count ?? 0) : 0
+  const grams = weighed ?? nominal
 
   function choose(id: string) {
     setProductId(id)
@@ -167,14 +169,16 @@ function AddLot({ onDone }: { onDone: () => void }) {
       purchasedAt: last?.date,
       gramsInitial: grams,
       gramsLeft: grams,
-      pricePerKg: price !== undefined ? pricePerKg(product, price) : undefined,
+      pricePerKg: price !== undefined && count ? (price * count * 1000) / grams : undefined,
       bestBefore: bestBefore || undefined,
     })
+    // Gewogene Ware nach Volumen: Dichte am Artikel merken, damit Preise und künftige Gebinde stimmen.
+    if (weighed && product.unit === 'ml' && count) await db.products.update(product.id, { density: weighed / (product.packageSize * count) })
     onDone()
   }
 
   return (
-    <div className="card grid gap-3 sm:grid-cols-[1fr_7rem_9rem_10rem_auto] sm:items-end">
+    <div className="card grid gap-3 sm:grid-cols-[1fr_7rem_9rem_9rem_10rem_auto] sm:items-end">
       <label className="label">
         Artikel
         <select className="field" value={productId} onChange={(e) => choose(e.target.value)}>
@@ -194,6 +198,10 @@ function AddLot({ onDone }: { onDone: () => void }) {
         Preis/Packung
         <NumberField value={price} digits={2} suffix="€" onChange={setPrice} />
       </label>
+      <label className="label" title="Inhalt ohne Gefäß. Leer = aus Packungsgröße und Dichte berechnet.">
+        Netto gewogen
+        <NumberField value={weighed} digits={0} suffix="g" placeholder={nominal ? fmt(nominal) : ''} onChange={setWeighed} />
+      </label>
       <label className="label">
         MHD
         <input type="date" className="field" value={bestBefore} onChange={(e) => setBestBefore(e.target.value)} />
@@ -202,8 +210,10 @@ function AddLot({ onDone }: { onDone: () => void }) {
         {grams ? `${fmt(grams)} g einlagern` : 'Einlagern'}
       </button>
       {product?.unit === 'ml' && (
-        <p className="text-xs text-muted sm:col-span-5">
-          {fmt(product.packageSize)} ml × Dichte → {fmt(packageGrams(product) ?? 0)} g pro Packung. Dichte bei Bedarf unter „Artikel & Preise“ anpassen.
+        <p className="text-xs text-muted sm:col-span-6">
+          {fmt(product.packageSize)} ml × Dichte {fmt(packageGrams({ ...product, packageSize: 1 }) ?? 1, 3)} → {fmt(packageGrams(product) ?? 0)} g pro
+          Packung. Genauer: Inhalt einmal netto wiegen (Gefäß tarieren oder leer nachwiegen). Die Dichte wird dann am Artikel
+          gespeichert und gilt für alle weiteren Gebinde.
         </p>
       )}
     </div>

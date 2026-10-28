@@ -58,6 +58,8 @@ const RULES: Rule[] = [
   [/distelöl|saflor/i, { category: 'fat', fatId: 'safflower' }],
   [/brokkoli/i, { category: 'fat', fatId: 'broccoli-seed' }],
   [/sesamöl/i, { category: 'fat', fatId: 'sesame' }],
+  [/sonnenblumen.*(high oleic|\bho\b)/i, { category: 'fat', fatId: 'sunflower-ho' }],
+  [/sonnenblumenöl/i, { category: 'fat', fatId: 'sunflower' }],
   [/olivenöl/i, { category: 'fat', fatId: 'olive' }],
   [/rapsöl/i, { category: 'fat', fatId: 'canola' }],
   [/hanföl/i, { category: 'fat', fatId: 'hemp' }],
