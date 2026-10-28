@@ -41,6 +41,8 @@ export interface Product {
   listPriceDate?: string
   /** Laut Shop lieferbar. Fehlt = unbekannt. */
   available?: boolean
+  /** Kategorie im Shop, z. B. „Pflanzenöl“ (aus dem Katalog-Import). */
+  shopCategory?: string
 }
 
 export interface Purchase {

@@ -99,7 +99,7 @@ describe('Salandia-Katalog', () => {
     const r = importSalandiaCatalog(catalog, [known])
     expect(r.products.map((p) => p.category)).toEqual(['lye', 'essentialOil'])
     expect(r.products[0]).toMatchObject({ lyeType: 'NaOH', listPrice: 8.69, listPriceDate: '2026-10-28' })
-    expect(r.updates).toEqual([{ id: known.id, changes: { listPrice: 5.99, listPriceDate: '2026-10-28', available: false, url: 'https://x/castor' } }])
+    expect(r.updates).toEqual([{ id: known.id, changes: { listPrice: 5.99, listPriceDate: '2026-10-28', available: false, shopCategory: 'Pflanzenöl', url: 'https://x/castor' } }])
   })
 
   it('Katalogpreis fließt in Materialpreis und Artikelwahl ein', () => {

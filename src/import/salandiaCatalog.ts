@@ -35,6 +35,17 @@ function categoryHint(kategorie: string | null): ProductCategory | undefined {
   return undefined
 }
 
+/** Shop-Pfad ohne Wurzel und ohne Alphabet-Abschnitte („A - B“): „Wellness & Hobbythek > Pflanzenöl > K - R“ → „Pflanzenöl“. */
+export function shopCategoryOf(kategorie: string | null): string | undefined {
+  if (!kategorie) return undefined
+  const parts = kategorie
+    .split('>')
+    .map((s) => s.trim())
+    .filter((s, i) => s && !(i === 0 && /wellness/i.test(s)) && !/^[A-ZÄÖÜ]\s*-\s*[A-ZÄÖÜ]$/.test(s))
+    .map((s) => s.replace(/\s*(Wellness & )?Hobbythek$/i, '').replace(/\/\s+/g, '/'))
+  return parts.join(' › ') || undefined
+}
+
 const normName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
 
 export interface CatalogImport {
@@ -43,8 +54,8 @@ export interface CatalogImport {
 }
 
 /**
- * Neue Artikel werden angelegt, bekannte (gleiche URL oder gleicher Name) bekommen nur den aktuellen Preis
- * und die Lieferbarkeit. Eigene Einstellungen wie Zuordnung oder Dichte bleiben unangetastet.
+ * Neue Artikel werden angelegt, bekannte (gleiche URL oder gleicher Name) bekommen nur den aktuellen Preis,
+ * die Lieferbarkeit und die Shop-Kategorie. Eigene Einstellungen wie Zuordnung oder Dichte bleiben unangetastet.
  */
 export function importSalandiaCatalog(data: CatalogExport, existing: Product[]): CatalogImport {
   const byUrl = new Map(existing.filter((p) => p.url).map((p) => [p.url!, p]))
@@ -59,7 +70,13 @@ export function importSalandiaCatalog(data: CatalogExport, existing: Product[]):
     if (seen.has(key)) continue
     seen.add(key)
 
-    const priceInfo = { listPrice: item.preis_eur, listPriceDate: data.scraped_at, ...(item.lieferbar !== null && { available: item.lieferbar }) }
+    const shopCategory = shopCategoryOf(item.kategorie)
+    const priceInfo = {
+      listPrice: item.preis_eur,
+      listPriceDate: data.scraped_at,
+      ...(item.lieferbar !== null && { available: item.lieferbar }),
+      ...(shopCategory && { shopCategory }),
+    }
     const known = (item.url && byUrl.get(item.url)) || byName.get(normName(item.name))
     if (known) {
       updates.push({ id: known.id, changes: { ...priceInfo, url: known.url ?? item.url ?? undefined } })

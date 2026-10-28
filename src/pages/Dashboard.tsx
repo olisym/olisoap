@@ -84,7 +84,15 @@ export function Dashboard() {
           icon={Package}
           title="Vorrat"
           subtitle="Was ist da, was läuft ab"
-          status={alerts.length ? <Chip tone="warn">{alerts.length} Hinweise</Chip> : <Chip tone="ok">alles ok</Chip>}
+          status={
+            alerts.length ? (
+              <Chip tone="warn">{alerts.length} Hinweise</Chip>
+            ) : inventory.lots.some((l) => l.gramsLeft > 0) ? (
+              <Chip tone="ok">alles ok</Chip>
+            ) : (
+              <Chip>leer</Chip>
+            )
+          }
         />
         <TaskTile
           to="/einkauf"
