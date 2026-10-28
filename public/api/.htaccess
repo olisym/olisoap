@@ -1,4 +1,0 @@
-# Nur index.php ausführen, sonst nichts ausliefern.
-<FilesMatch "^(?!index\.php$).+$">
-  Require all denied
-</FilesMatch>
