@@ -4,7 +4,7 @@ import { calculate } from './core/calc'
 import { barCount } from './core/cost'
 import type { Inventory, Lot, Product, Purchase } from './core/inventory'
 import type { RecipeInput } from './core/types'
-import { KOERPERSEIFE_2 } from './data/seedRecipes'
+import { TEMPLATES, type TemplateFamily } from './data/templates'
 
 export interface Recipe {
   id: string
@@ -15,7 +15,9 @@ export interface Recipe {
   input: RecipeInput
   /** Stückgewicht frisch geschnitten in g, für Stückzahl und Kosten pro Stück. */
   barWeight?: number
-  /** Vorgängerversion, aus der dieses Rezept entstanden ist. */
+  /** Grundseife, von der dieses Rezept eine Variante ist. Fehlt = selbst eine Grundseife. */
+  baseId?: string
+  /** Veraltet (frühere Versionierung), wird nicht mehr gesetzt. */
   parentId?: string
   createdAt: string
   updatedAt: string
@@ -85,10 +87,25 @@ db.version(3).stores({
   batches: 'id, recipeId, date, number',
 })
 
-db.on('populate', (tx) => {
+/** Legt eine Grundseife samt Varianten als Rezepte an. */
+export function familyRecipes(family: TemplateFamily): Recipe[] {
   const now = new Date().toISOString()
-  tx.table('recipes').add({ ...KOERPERSEIFE_2, id: crypto.randomUUID(), createdAt: now, updatedAt: now })
+  const base: Recipe = { ...structuredClone(family.base), id: crypto.randomUUID(), createdAt: now, updatedAt: now }
+  const variants = family.variants.map((v) => ({ ...structuredClone(v), id: crypto.randomUUID(), baseId: base.id, createdAt: now, updatedAt: now }))
+  return [base, ...variants]
+}
+
+db.on('populate', (tx) => {
+  tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
 })
+
+/** Löscht alle Rezepte und legt die Grundseifen neu an. Chargen bleiben erhalten (sie enthalten eine Kopie ihres Rezepts). */
+export async function resetRecipes(): Promise<void> {
+  await db.transaction('rw', db.recipes, async () => {
+    await db.recipes.clear()
+    await db.recipes.bulkAdd(TEMPLATES.flatMap(familyRecipes))
+  })
+}
 
 export async function loadInventory(): Promise<Inventory> {
   const [products, purchases, lots] = await Promise.all([db.products.toArray(), db.purchases.toArray(), db.lots.toArray()])

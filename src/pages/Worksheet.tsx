@@ -88,7 +88,12 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
       <table className="mt-2 w-full text-sm">
         <tbody>
           <Phase title="Phase A: Lauge">
-            <Row name="Wasser (destilliert / Osmose)" grams={r.water} share={`${fmt((r.water / input.totalFat) * 100, 1)} % d. GFM`} />
+            <Row
+              name="Wasser (destilliert / Osmose)"
+              grams={r.water}
+              share={`${fmt((r.water / input.totalFat) * 100, 1)} % d. GFM`}
+              note={r.waterFromAdditives > 0 ? `Bereits abgezogen: ${fmt(r.waterFromAdditives, 0)} g Wasser aus flüssigen Zusätzen` : undefined}
+            />
             {acids.map((a) => (
               <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note="Zuerst vollständig im kalten Wasser lösen, dann erst die Lauge." />
             ))}

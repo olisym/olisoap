@@ -5,6 +5,7 @@ import { Findings } from '../components/Findings'
 import { NumberField } from '../components/NumberField'
 import { PropertyBars } from '../components/PropertyBars'
 import { SiedenPanel } from '../components/SiedenPanel'
+import { VariantDiff } from '../components/VariantDiff'
 import { calculate, sapBasis, sapValue, type RecipeResult } from '../core/calc'
 import { barCount, recipeCost } from '../core/cost'
 import { materialPrice, materialStock, type Inventory } from '../core/inventory'
@@ -28,6 +29,7 @@ export function RecipeEditor() {
   const [draft, setDraft] = useState<Recipe>()
   const [sieden, setSieden] = useState(false)
   const inventory = useLiveQuery(loadInventory)
+  const base = useLiveQuery(() => (stored?.baseId ? db.recipes.get(stored.baseId) : undefined), [stored?.baseId])
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -58,16 +60,19 @@ export function RecipeEditor() {
     await db.recipes.put({ ...draft!, updatedAt: new Date().toISOString() })
   }
 
-  async function saveAsVersion() {
+  /** Variante anlegen. Varianten hängen immer direkt an der Grundseife. */
+  async function createVariant() {
     const now = new Date().toISOString()
-    const copy: Recipe = { ...draft!, id: crypto.randomUUID(), parentId: draft!.id, name: `${draft!.name} (neue Version)`, createdAt: now, updatedAt: now }
+    const baseId = draft!.baseId ?? draft!.id
+    const copy: Recipe = { ...structuredClone(draft!), id: crypto.randomUUID(), baseId, parentId: undefined, name: `${base?.name ?? draft!.name} Variante`, createdAt: now, updatedAt: now }
     await db.recipes.add(copy)
     setDraft(copy)
     navigate(`/rezepte/${copy.id}`)
   }
 
   async function remove() {
-    if (!confirm(`„${draft!.name}“ wirklich löschen?`)) return
+    const hasVariants = (await db.recipes.where('id').notEqual(draft!.id).filter((r) => r.baseId === draft!.id).count()) > 0
+    if (!confirm(`„${draft!.name}“ wirklich löschen?${hasVariants ? ' Ihre Varianten bleiben als eigenständige Rezepte erhalten.' : ''}`)) return
     await db.recipes.delete(draft!.id)
     navigate('/')
   }
@@ -84,8 +89,8 @@ export function RecipeEditor() {
         <button className="btn-primary" disabled={!dirty} onClick={save}>
           {dirty ? 'Speichern' : 'Gespeichert'}
         </button>
-        <button className="btn" onClick={saveAsVersion}>
-          Als neue Version
+        <button className="btn" onClick={createVariant}>
+          Variante anlegen
         </button>
         <button className="btn-primary" disabled={dirty || !result} title={dirty ? 'Erst speichern' : undefined} onClick={() => setSieden(!sieden)}>
           Sieden
@@ -215,6 +220,12 @@ export function RecipeEditor() {
                   ))}
                   <dt className="font-semibold">Wasser</dt>
                   <dd className="text-right text-lg font-semibold">{fmt(result.water, 0)} g</dd>
+                  {result.waterFromAdditives > 0 && (
+                    <>
+                      <dt className="text-muted">+ Wasser aus Zusätzen</dt>
+                      <dd className="text-right text-muted">{fmt(result.waterFromAdditives, 0)} g</dd>
+                    </>
+                  )}
                   <dt>Laugenkonzentration</dt>
                   <dd className="text-right">{fmt(result.lyeConcentration, 1)} %</dd>
                   <dt>Wasser : Lauge</dt>
@@ -230,6 +241,7 @@ export function RecipeEditor() {
                   Heuristik nach SoapCalc-Konvention, gut zum Vergleichen von Rezepten. Grüne Bereiche: Zielprofil.
                 </p>
               </div>
+              {base && <VariantDiff variant={draft} base={base} />}
               <Findings findings={findings} />
               {inventory && <CostCard result={result} inventory={inventory} barWeight={draft.barWeight ?? 100} onBarWeight={(barWeight) => set({ barWeight })} />}
             </>

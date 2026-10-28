@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { exportBackup, importBackup } from '../db'
+import { exportBackup, importBackup, resetRecipes } from '../db'
 
 export function DataPage() {
   const [status, setStatus] = useState<string>()
@@ -42,6 +42,23 @@ export function DataPage() {
       </div>
       {status && <p className="text-sm">{status}</p>}
       <p className="text-xs text-muted">Beim Einspielen werden Einträge mit gleicher ID überschrieben, andere bleiben erhalten.</p>
+      <div className="card space-y-2">
+        <h2 className="font-semibold">Rezepte neu anfangen</h2>
+        <p className="text-sm text-muted">
+          Löscht alle Rezepte und legt die Grundseifen (Körper, Haar, Rasur) mit ihren Varianten neu an. Chargen, Lager und Preise
+          bleiben erhalten, Chargen behalten ihre Kopie des damaligen Rezepts. Vorher am besten eine Sicherung herunterladen.
+        </p>
+        <button
+          className="btn text-red-600"
+          onClick={async () => {
+            if (!confirm('Alle Rezepte löschen und durch die Grundseifen ersetzen?')) return
+            await resetRecipes()
+            setStatus('Rezepte auf die Grundseifen zurückgesetzt.')
+          }}
+        >
+          Rezepte zurücksetzen
+        </button>
+      </div>
     </section>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KOERPERSEIFE_2 } from '../data/seedRecipes'
+import { REFERENCE_2000G } from './fixtures'
 import { classify, importSalandia, parsePackage } from '../import/salandia'
 import { calculate } from './calc'
 import { barCount, recipeCost } from './cost'
@@ -35,7 +35,7 @@ describe('Packungen und Preise', () => {
 
 describe('Rezeptkosten', () => {
   it('summiert bekannte Preise und meldet fehlende', () => {
-    const r = calculate(KOERPERSEIFE_2.input)
+    const r = calculate(REFERENCE_2000G)
     const c = recipeCost(r, (k) => (k === 'fat:shea' ? { pricePerKg: 16, source: 'purchase' } : undefined))
     expect(c.total).toBeCloseTo(0.7 * 16, 6)
     expect(c.missing).toContain('Babassuöl')
