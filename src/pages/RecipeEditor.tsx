@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Findings } from '../components/Findings'
 import { NumberField } from '../components/NumberField'
 import { PropertyBars } from '../components/PropertyBars'
+import { SiedenPanel } from '../components/SiedenPanel'
 import { calculate, sapValue, type RecipeResult } from '../core/calc'
 import { barCount, recipeCost } from '../core/cost'
 import { materialPrice, materialStock, type Inventory } from '../core/inventory'
@@ -25,6 +26,7 @@ export function RecipeEditor() {
   const { id } = useParams()
   const stored = useLiveQuery(() => (id ? db.recipes.get(id) : undefined), [id])
   const [draft, setDraft] = useState<Recipe>()
+  const [sieden, setSieden] = useState(false)
   const inventory = useLiveQuery(loadInventory)
   const navigate = useNavigate()
 
@@ -85,6 +87,9 @@ export function RecipeEditor() {
         <button className="btn" onClick={saveAsVersion}>
           Als neue Version
         </button>
+        <button className="btn-primary" disabled={dirty || !result} title={dirty ? 'Erst speichern' : undefined} onClick={() => setSieden(!sieden)}>
+          Sieden
+        </button>
         <Link className="btn" to={`/rezepte/${draft.id}/druck`}>
           Arbeitsblatt
         </Link>
@@ -95,6 +100,8 @@ export function RecipeEditor() {
           Löschen
         </button>
       </header>
+
+      {sieden && result && inventory && <SiedenPanel recipe={draft} result={result} inventory={inventory} onClose={() => setSieden(false)} />}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
         <div className="space-y-6">

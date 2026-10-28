@@ -4,22 +4,28 @@ Werkstatt-Software für Heimseifensieder: Rezepte entwerfen und berechnen, Arbei
 Später kommen Lager, Kosten, Chargen und ein Reste-Optimierer dazu. Leitlinie: **evidenzbasiert, ohne Nonsens.**
 Jede Zutat braucht einen Grund.
 
-## Stand (v0.1)
+## Stand (v0.3)
 
 - **Laugenrechner** (NaOH/KOH, Reinheit, Überfettung, drei Wassermodi), Säuren wie Zitronensäure werden automatisch verrechnet
 - **Kennzahlen** (Härte, Reinigung, Pflege, Schaum, Jodzahl, INS, Linol-/Linolensäure) mit **Zielprofilen**
 - **Zusätze** mit Zweck, Evidenz-Einordnung und eigener Begründung
 - **Arbeitsblatt** zum Drucken mit Phasen und Chargenprotokoll
 - **Korrekturrechner**: zu viel Fett oder Lauge eingewogen → was nachgeben?
+- **Lager**: Artikel mit Preishistorie, Gebinde mit Restmenge und MHD, Import der Salandia-Bestellübersicht
+- **Kosten** pro Rezept und pro Stück
+- **Chargen**: Sieden aus dem Rezept mit Lagerabbuchung (zuerst, was zuerst abläuft), festgeschriebene Kosten,
+  Reifekontrolle über Gewichtsverlust, Restbestand und Abgänge, frühestes MHD der verwendeten Fette
+- **Hinweise** auf der Startseite: reife Chargen, fällige Wägungen, ablaufende Gebinde
 - **Sicherung** als JSON-Export und -Import (Daten liegen lokal im Browser)
 - Installierbar als **PWA**, funktioniert offline
 
 ## Aufbau
 
 ```
-src/core/     Rechenkern: reine Funktionen, ohne UI, mit Tests (calc, correction, evaluate)
+src/core/     Rechenkern: reine Funktionen, ohne UI, mit Tests (calc, correction, evaluate, inventory, cost, batch)
 src/data/     Fett-, Zusatz- und Profildaten
 src/pages/    Oberfläche (React)
+src/import/   Importe (Salandia)
 src/db.ts     Lokale Datenbank (IndexedDB über Dexie)
 ```
 

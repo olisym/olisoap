@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router-dom'
+import { Reminders } from '../components/Reminders'
 import { calculate } from '../core/calc'
 import { db, type Recipe } from '../db'
 import { PROFILES_BY_ID } from '../data/profiles'
@@ -37,6 +38,7 @@ export function RecipeList() {
 
   return (
     <section>
+      <Reminders />
       <header className="mb-4 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Rezepte</h1>
         <button className="btn-primary" onClick={create}>
