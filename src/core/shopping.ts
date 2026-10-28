@@ -1,5 +1,7 @@
 import type { Need } from './batch'
-import { materialKey, materialStock, packageGrams, pricePerKg, type Inventory, type Product } from './inventory'
+import { bestProduct, materialStock, offerPrice, packageGrams, pricePerKg, type Inventory, type Product } from './inventory'
+
+export { bestProduct }
 
 // Einkauf: aus dem Bedarf (z. B. geplante Sude) und dem Bestand eine Bestellliste ableiten.
 
@@ -11,25 +13,6 @@ export interface ShoppingSuggestion {
   packages: number
   unitPrice?: number
   pricePerKg?: number
-}
-
-function latestPrice(inv: Inventory, productId: string) {
-  return inv.purchases.filter((p) => p.productId === productId).sort((a, b) => b.date.localeCompare(a.date))[0]
-}
-
-/**
- * Bester Artikel für ein Material: der günstigste pro kg unter den Artikeln, die in den letzten drei Jahren
- * gekauft wurden (ältere Preise sind meist überholt). Ohne Einkauf: irgendein passender Artikel.
- */
-export function bestProduct(inv: Inventory, key: Need['key'], today = new Date().toISOString().slice(0, 10)): Product | undefined {
-  const candidates = inv.products.filter((p) => materialKey(p) === key && packageGrams(p))
-  const cutoff = `${Number(today.slice(0, 4)) - 3}${today.slice(4)}`
-  const priced = candidates
-    .map((p) => ({ p, last: latestPrice(inv, p.id) }))
-    .filter((x) => x.last && x.last.date >= cutoff)
-    .map((x) => ({ p: x.p, perKg: pricePerKg(x.p, x.last!.unitPrice)! }))
-    .sort((a, b) => a.perKg - b.perKg)
-  return priced[0]?.p ?? candidates[0]
 }
 
 /** Summiert gleichartige Bedarfe (mehrere Rezepte) zu einem Bedarf pro Material. */
@@ -49,7 +32,7 @@ export function planShopping(inv: Inventory, needs: Need[]): ShoppingSuggestion[
       if (shortfall <= 0) return undefined
       const product = bestProduct(inv, need.key)
       const grams = product && packageGrams(product)
-      const last = product && latestPrice(inv, product.id)
+      const last = product && offerPrice(inv, product)
       return {
         need,
         shortfall,

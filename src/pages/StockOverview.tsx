@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, Chip, EmptyState } from '../components/ui'
 import { addDays } from '../core/batch'
-import { CATEGORY_LABELS, materialKey, type Inventory, type Lot, type Product, type ProductCategory } from '../core/inventory'
+import { CATEGORY_LABELS, materialKey, offerPrice, type Inventory, type Lot, type Product, type ProductCategory } from '../core/inventory'
 import { bestProduct } from '../core/shopping'
 import { ADDITIVES_BY_ID } from '../data/additives'
 import { FATS_BY_ID } from '../data/fats'
@@ -60,7 +60,7 @@ export function StockOverview() {
   async function reorder(m: Material) {
     const product = m.product ?? bestProduct(inv!, m.key as never)
     if (!product) return
-    const last = inv!.purchases.filter((p) => p.productId === product.id).sort((a, b) => b.date.localeCompare(a.date))[0]
+    const last = offerPrice(inv!, product)
     await db.orderItems.add({ id: crypto.randomUUID(), productId: product.id, packages: 1, unitPrice: last?.unitPrice, reason: 'Nachbestellung', status: 'open', createdAt: new Date().toISOString() })
   }
 

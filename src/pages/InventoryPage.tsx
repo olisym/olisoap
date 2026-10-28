@@ -8,6 +8,7 @@ import {
   CATEGORY_LABELS,
   materialKey,
   packageGrams,
+  offerPrice,
   pricePerKg,
   type Lot,
   type Product,
@@ -19,6 +20,8 @@ import { FATS } from '../data/fats'
 import { db, loadInventory } from '../db'
 import { fmt } from '../format'
 import { importSalandia } from '../import/salandia'
+import { importSalandiaCatalog, isCatalog } from '../import/salandiaCatalog'
+import { Upload } from 'lucide-react'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ProductCategory[]
 /** Kategorien, die in Seifenrezepten verrechnet werden. */
@@ -163,7 +166,8 @@ function AddLot({ onDone }: { onDone: () => void }) {
 
   function choose(id: string) {
     setProductId(id)
-    setPrice(latestPrice(id, inv!.purchases)?.unitPrice)
+    const p = inv!.products.find((x) => x.id === id)
+    setPrice(p && offerPrice(inv!, p)?.unitPrice)
   }
 
   async function save() {
@@ -229,10 +233,12 @@ function AddLot({ onDone }: { onDone: () => void }) {
 function Products() {
   const inv = useLiveQuery(loadInventory)
   const [filter, setFilter] = useState<ProductCategory | 'soap' | 'all'>('soap')
+  const [q, setQ] = useState('')
   if (!inv) return null
   const update = (id: string, patch: Partial<Product>) => db.products.update(id, patch)
   const products = inv.products
     .filter((p) => filter === 'all' || (filter === 'soap' ? SOAP_CATEGORIES.includes(p.category) : p.category === filter))
+    .filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || a.name.localeCompare(b.name))
 
   async function addProduct() {
@@ -255,6 +261,7 @@ function Products() {
         <button className="btn" onClick={addProduct}>
           + Artikel anlegen
         </button>
+        <input className="field min-w-48 flex-1" placeholder="Artikel suchen" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Artikel suchen" />
         <span className="text-sm text-muted">{products.length} Artikel</span>
       </div>
       <div className="card overflow-x-auto">
@@ -274,7 +281,7 @@ function Products() {
           </thead>
           <tbody>
             {products.map((p) => {
-              const last = latestPrice(p.id, inv.purchases)
+              const last = offerPrice(inv, p)
               const perKg = last ? pricePerKg(p, last.unitPrice) : undefined
               const unlinked = SOAP_CATEGORIES.includes(p.category) && !materialKey(p)
               return (
@@ -341,7 +348,11 @@ function Products() {
                   <td className="py-1.5 text-right tabular-nums">
                     {last ? (
                       <>
-                        {fmt(last.unitPrice, 2)} €<div className="text-xs text-muted">{new Date(last.date).toLocaleDateString('de-DE')}</div>
+                        {fmt(last.unitPrice, 2)} €
+                        <div className="text-xs text-muted">
+                          {last.source === 'list' ? 'Shop' : 'gekauft'} {new Date(last.date).toLocaleDateString('de-DE')}
+                          {p.available === false && ' · nicht lieferbar'}
+                        </div>
                       </>
                     ) : (
                       <PriceEntry productId={p.id} />
@@ -383,38 +394,59 @@ function PriceEntry({ productId }: { productId: string }) {
 }
 
 function Import() {
-  const [status, setStatus] = useState<string>()
+  const [status, setStatus] = useState<string[]>([])
 
-  async function upload(file: File) {
-    try {
-      const inv = await loadInventory()
-      const { products, purchases } = importSalandia(JSON.parse(await file.text()), inv.products, inv.purchases)
-      await db.transaction('rw', db.products, db.purchases, async () => {
+  async function importFile(file: File): Promise<string> {
+    const data = JSON.parse(await file.text())
+    const inv = await loadInventory()
+    if (isCatalog(data)) {
+      const { products, updates } = importSalandiaCatalog(data, inv.products)
+      await db.transaction('rw', db.products, async () => {
         await db.products.bulkAdd(products)
-        await db.purchases.bulkAdd(purchases)
+        await db.products.bulkUpdate(updates.map((u) => ({ key: u.id, changes: u.changes })))
       })
-      setStatus(`${products.length} neue Artikel und ${purchases.length} Einkäufe übernommen. Bereits bekannte wurden übersprungen.`)
-    } catch (e) {
-      setStatus(`Fehler: ${(e as Error).message}`)
+      return `${file.name}: Katalog vom ${new Date(data.scraped_at).toLocaleDateString('de-DE')}, ${products.length} neue Artikel, ${updates.length} Preise aktualisiert.`
     }
+    const { products, purchases } = importSalandia(data, inv.products, inv.purchases)
+    await db.transaction('rw', db.products, db.purchases, async () => {
+      await db.products.bulkAdd(products)
+      await db.purchases.bulkAdd(purchases)
+    })
+    return `${file.name}: Bestellungen, ${products.length} neue Artikel, ${purchases.length} Einkäufe.`
+  }
+
+  async function upload(files: FileList) {
+    const out: string[] = []
+    for (const f of Array.from(files)) {
+      try {
+        out.push(await importFile(f))
+      } catch (e) {
+        out.push(`${f.name}: Fehler, ${(e as Error).message}`)
+      }
+    }
+    setStatus(out)
   }
 
   return (
-    <div className="card max-w-prose space-y-3">
-      <h2 className="font-semibold">Salandia-Bestellungen</h2>
+    <div className="card max-w-2xl space-y-4">
+      <h2 className="font-semibold">Salandia importieren</h2>
       <p className="text-sm text-muted">
-        Liest die Bestellübersicht als JSON ein und legt daraus Artikel mit Preishistorie an. Fette und Zusätze werden anhand des
-        Namens zugeordnet. Bitte unter „Artikel & Preise“ kurz prüfen. Mehrfaches Einlesen ist unschädlich.
+        Eine oder mehrere JSON-Dateien wählen. Die App erkennt selbst, ob es deine <b>Bestellübersicht</b> (eigene Einkäufe mit
+        Preisen) oder ein <b>Katalog-Auszug</b> (aktuelle Shop-Preise) ist. Fette, Laugen und Zusätze werden automatisch zugeordnet.
+        Mehrfaches Einlesen ist unschädlich: Bekanntes wird nur aktualisiert.
       </p>
-      <label className="btn-primary cursor-pointer">
-        JSON-Datei wählen
-        <input type="file" accept="application/json,.json" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+      <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line text-muted transition hover:border-accent hover:text-ink">
+        <Upload size={24} aria-hidden />
+        <span className="font-medium">JSON-Dateien wählen</span>
+        <input type="file" multiple accept="application/json,.json" className="sr-only" onChange={(e) => e.target.files?.length && upload(e.target.files)} />
       </label>
-      {status && <p className="text-sm">{status}</p>}
-      <p className="text-xs text-muted">
-        Das MHD im Export stammt vom aktuellen Shop-Artikel, nicht von deiner gelieferten Charge. Es wird deshalb nicht übernommen,
-        sondern beim Einlagern eingetragen.
-      </p>
+      {status.length > 0 && (
+        <ul className="space-y-1 text-sm">
+          {status.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
