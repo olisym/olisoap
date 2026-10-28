@@ -1,9 +1,8 @@
 <?php
 // olisoap Sync-API. Speichert nur verschlüsselte Datensätze: Der Server sieht weder Rezepte noch Bestände.
 //
-// Konfiguration liegt außerhalb des Web-Verzeichnisses (siehe docs/olisoap-config.sample.php):
-//   <Domain-Verzeichnis>/olisoap-config.php  (eine Ebene über httpdocs)
-// oder in der Umgebungsvariable OLISOAP_CONFIG.
+// Konfiguration: olisoap-config.php eine Ebene über httpdocs, in httpdocs oder in httpdocs/api
+// (siehe docs/olisoap-config.sample.php), oder Pfad in der Umgebungsvariable OLISOAP_CONFIG.
 //
 // Endpunkte (POST, JSON), Parameter ?a=…:
 //   register  { user, auth, code }     → { token }   nur mit dem Registrierungscode aus der Konfiguration
