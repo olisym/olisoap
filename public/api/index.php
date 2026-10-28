@@ -33,14 +33,31 @@ set_exception_handler(function (Throwable $e): void {
     fail(500, $hint);
 });
 
-$configFile = getenv('OLISOAP_CONFIG') ?: dirname(__DIR__, 2) . '/olisoap-config.php';
+// Konfiguration suchen: bevorzugt außerhalb des Web-Verzeichnisses. Erlaubt der Webspace (open_basedir) dort keinen
+// Zugriff, geht auch httpdocs/olisoap-config.php: eine PHP-Datei, die nur ein Array zurückgibt, zeigt im Browser nichts an.
+$configCandidates = array_filter([
+    getenv('OLISOAP_CONFIG') ?: null,
+    dirname(__DIR__, 2) . '/olisoap-config.php',
+    dirname(__DIR__) . '/olisoap-config.php',
+    __DIR__ . '/olisoap-config.php',
+]);
+$configFile = '';
+foreach ($configCandidates as $candidate) {
+    if (@is_file($candidate) && @is_readable($candidate)) {
+        $configFile = $candidate;
+        break;
+    }
+}
 $action = $_GET['a'] ?? '';
 
 // Diagnose: im Browser aufrufbar unter api/index.php?a=health, zeigt keine Zugangsdaten.
 if ($action === 'health') {
-    $report = ['php' => PHP_VERSION, 'pdo_mysql' => extension_loaded('pdo_mysql'), 'config' => @is_file($configFile)];
+    $report = ['php' => PHP_VERSION, 'pdo_mysql' => extension_loaded('pdo_mysql'), 'config' => $configFile !== ''];
+    $root = dirname(__DIR__, 2);
+    $report['gesucht'] = array_map(fn ($c) => str_replace($root, '…', $c) . (@is_file($c) ? ' (gefunden)' : ' (nicht lesbar oder fehlt)'), array_values($configCandidates));
+    $report['open_basedir'] = ini_get('open_basedir') ? str_replace($root, '…', (string) ini_get('open_basedir')) : 'keine Einschränkung';
     if (!$report['config']) {
-        $report['hint'] = 'olisoap-config.php nicht gefunden. Erwartet eine Ebene über httpdocs: ' . basename(dirname(__DIR__, 2)) . '/olisoap-config.php';
+        $report['hint'] = 'olisoap-config.php nicht lesbar. Liegt sie eine Ebene über httpdocs und open_basedir erlaubt das nicht, die Datei nach httpdocs verschieben.';
         echo json_encode($report, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -65,7 +82,7 @@ if ($action === 'health') {
     exit;
 }
 
-if (!is_file($configFile)) fail(500, 'Konfiguration fehlt: olisoap-config.php eine Ebene über httpdocs ablegen');
+if ($configFile === '') fail(500, 'Konfiguration nicht lesbar, Diagnose: api/index.php?a=health');
 $config = require $configFile;
 
 // CORS nur für ausdrücklich erlaubte Herkünfte (z. B. die GitHub-Pages-Version).
