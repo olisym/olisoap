@@ -1,0 +1,8 @@
+# Nur index.php ausführen, sonst nichts ausliefern.
+<FilesMatch "^(?!index\.php$).*$">
+  Require all denied
+</FilesMatch>
+# Authorization-Header an PHP durchreichen (bei PHP als FastCGI nötig).
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

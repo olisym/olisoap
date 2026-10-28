@@ -4,7 +4,7 @@ Werkstatt-Software für Heimseifensieder: Rezepte entwerfen und berechnen, Arbei
 Später kommen Lager, Kosten, Chargen und ein Reste-Optimierer dazu. Leitlinie: **evidenzbasiert, ohne Nonsens.**
 Jede Zutat braucht einen Grund.
 
-## Stand (v0.6)
+## Stand (v0.7)
 
 - **Übersicht** nach Anliegen: Sieden, Rezepte, Vorrat, Einkauf, Entwickeln, dazu Reifeprozess, Hinweise und „Was kann ich sieden?“
 - **Geführtes Sieden**: Rezept wählen, Menge oder Stückzahl, Vorrats-Check, Siede-Modus mit großen Zahlen,
@@ -30,7 +30,10 @@ Jede Zutat braucht einen Grund.
 - **Chargen**: Sieden aus dem Rezept mit Lagerabbuchung (zuerst, was zuerst abläuft), festgeschriebene Kosten,
   Reifekontrolle über Gewichtsverlust, Restbestand und Abgänge, frühestes MHD der verwendeten Fette
 - **Hinweise** auf der Startseite: reife Chargen, fällige Wägungen, ablaufende Gebinde
-- **Sicherung** als JSON-Export und -Import (Daten liegen lokal im Browser)
+- **Sync** zwischen Geräten über eine kleine PHP-API, **Ende-zu-Ende-verschlüsselt** (AES-256-GCM, Schlüssel per PBKDF2 aus der
+  Passphrase); der Server speichert nur Chiffretext
+- **Etiketten-Editor**: Logo, Texte, Zutaten deutsch/INCI/keine, Banderole oder Aufkleber
+- **Sicherung** als JSON-Export und -Import
 - Installierbar als **PWA**, funktioniert offline
 
 ## Aufbau
@@ -40,8 +43,17 @@ src/core/     Rechenkern: reine Funktionen, ohne UI, mit Tests (calc, correction
 src/data/     Fett-, Zusatz- und Profildaten
 src/pages/    Oberfläche (React)
 src/import/   Importe (Salandia)
+src/sync/     Verschlüsselung und Abgleich
 src/db.ts     Lokale Datenbank (IndexedDB über Dexie)
+public/api/   Sync-API (PHP, MySQL/MariaDB oder SQLite)
+docs/         Vorlage für die Server-Konfiguration
 ```
+
+## Betrieb auf eigenem Webspace
+
+Ein Push auf `main` baut die App zusätzlich mit Basis `/` und legt das Ergebnis in den Branch `deploy`.
+Plesk zieht diesen Branch per Git-Bereitstellung nach `httpdocs`. Die Datenbank-Zugangsdaten stehen in
+`olisoap-config.php` **eine Ebene über `httpdocs`** (Vorlage: `docs/olisoap-config.sample.php`) und nie im Repository.
 
 Alle Werkzeuge (Korrektur, Profilprüfung, künftig der Optimierer) rechnen über dieselben Kernfunktionen.
 

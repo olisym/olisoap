@@ -8,7 +8,10 @@ import { parseWeights } from '../core/weights'
 import { calculate } from '../core/calc'
 import { evaluate } from '../core/evaluate'
 import { PROFILES_BY_ID } from '../data/profiles'
-import { barsLeft, db, deleteBatch, isTub, readyDate, type Batch } from '../db'
+import { recipeCost } from '../core/cost'
+import { materialPrice, type Inventory } from '../core/inventory'
+import type { RecipeResult } from '../core/calc'
+import { barsLeft, db, deleteBatch, isTub, loadInventory, readyDate, type Batch } from '../db'
 import { fmt } from '../format'
 
 export const today = () => new Date().toISOString().slice(0, 10)
@@ -73,8 +76,9 @@ export function BatchList() {
 export function BatchDetail() {
   const { id } = useParams()
   const batch = useLiveQuery(() => (id ? db.batches.get(id) : undefined), [id])
-  const lots = useLiveQuery(() => db.lots.toArray())
-  const products = useLiveQuery(() => db.products.toArray())
+  const inventory = useLiveQuery(loadInventory)
+  const lots = inventory?.lots
+  const products = inventory?.products
   const navigate = useNavigate()
   if (!batch) return <p className="text-muted">Lade …</p>
 
@@ -181,6 +185,7 @@ export function BatchDetail() {
               <dd className="text-right">{fmt(result.properties.polyunsaturated, 1)} %</dd>
             </dl>
             {batch.unpriced.length > 0 && <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">Ohne Preis: {batch.unpriced.join(', ')}</p>}
+            {inventory && <CostBreakdown result={result} inventory={inventory} />}
             {result.properties.polyunsaturated > 15 && (
               <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">Viele mehrfach ungesättigte Fettsäuren: lieber zügig verbrauchen, auf orange Flecken achten.</p>
             )}
@@ -435,5 +440,34 @@ function CutForm({ batch, update }: { batch: Batch; update: (p: Partial<Batch>) 
         </button>
       </div>
     </div>
+  )
+}
+
+/** Woraus sich die Kosten zusammensetzen, zu heutigen Preisen (die Charge selbst behält ihre Kosten vom Siedetag). */
+function CostBreakdown({ result, inventory }: { result: RecipeResult; inventory: Inventory }) {
+  const cost = recipeCost(result, (k) => materialPrice(inventory, k))
+  return (
+    <details className="mt-3 text-sm">
+      <summary className="cursor-pointer text-accent">Kosten aufschlüsseln (heutige Preise)</summary>
+      <table className="mt-2 w-full tabular-nums">
+        <tbody>
+          {cost.lines.map((l) => (
+            <tr key={l.key} className="border-t border-line">
+              <td className="py-1 pr-2">{l.name}</td>
+              <td className="text-right text-muted">{fmt(l.grams, l.grams < 100 ? 1 : 0)} g</td>
+              <td className="pl-3 text-right text-muted">{l.price ? `${fmt(l.price.pricePerKg, 2)} €/kg` : ''}</td>
+              <td className="pl-3 text-right">{l.cost !== undefined ? `${fmt(l.cost, 2)} €` : '–'}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-line font-semibold">
+            <td className="py-1">Summe</td>
+            <td colSpan={3} className="text-right">
+              {fmt(cost.total, 2)} €
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p className="mt-1 text-xs text-muted">Nur Rohstoffe. Verpackung, Etiketten, Strom und Wasser sind nicht enthalten.</p>
+    </details>
   )
 }

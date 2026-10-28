@@ -124,8 +124,15 @@ export function offerPrice(inv: Inventory, p: Product): Offer | undefined {
   return list.date >= purchase.date ? list : purchase
 }
 
-/** Größte Packung, die ohne eigene Kaufhistorie vorgeschlagen wird (Großgebinde nur, wenn man sie schon mal gekauft hat). */
-const MAX_SUGGESTED_PACKAGE_G = 5000
+/**
+ * Größte Packung, die ohne eigene Kaufhistorie vorgeschlagen wird (Großgebinde nur, wenn man sie schon mal gekauft hat).
+ * Ätherische Öle und Wirkstoffe braucht man in kleinen Mengen, dort wären Literflaschen unrealistisch.
+ */
+function maxSuggestedPackage(p: Product): number {
+  if (p.category === 'essentialOil') return 100
+  if (p.category === 'additive' || p.category === 'cosmetic') return 1000
+  return 5000
+}
 
 /**
  * Bester Artikel für ein Material:
@@ -141,10 +148,11 @@ export function bestProduct(inv: Inventory, key: MaterialKey, today = new Date()
   }
   const cheapest = (list: Product[]) => list.sort((a, b) => perKg(a) - perKg(b))[0]
   const cutoff = yearsBefore(today, 3)
-  const bought = candidates.filter((p) => inv.purchases.some((x) => x.productId === p.id && x.date >= cutoff))
+  // Selbst gekaufte Artikel (auch ältere Käufe, dann aber mit aktuellem Shop-Preis) zuerst: bekannte Qualität und Größe.
+  const bought = candidates.filter((p) => inv.purchases.some((x) => x.productId === p.id && (x.date >= cutoff || p.listPriceDate)))
   if (bought.length) return cheapest(bought)
   const listed = candidates.filter(
-    (p) => p.listPrice !== undefined && p.listPriceDate && p.listPriceDate >= yearsBefore(today, 1) && p.available !== false && packageGrams(p)! <= MAX_SUGGESTED_PACKAGE_G,
+    (p) => p.listPrice !== undefined && p.listPriceDate && p.listPriceDate >= yearsBefore(today, 1) && p.available !== false && packageGrams(p)! <= maxSuggestedPackage(p),
   )
   return cheapest(listed) ?? candidates[0]
 }
