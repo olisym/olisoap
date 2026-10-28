@@ -1,0 +1,149 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Link, useParams } from 'react-router-dom'
+import { calculate, type AdditiveLine } from '../core/calc'
+import { evaluate } from '../core/evaluate'
+import { PROFILES_BY_ID } from '../data/profiles'
+import { db } from '../db'
+import { fmt } from '../format'
+
+function Row({ name, grams, share, note }: { name: string; grams: number; share: string; note?: string }) {
+  return (
+    <tr className="border-t border-line align-top">
+      <td className="w-8 py-1.5 text-lg leading-none">☐</td>
+      <td className="py-1.5 pr-2">{name}</td>
+      <td className="py-1.5 pr-4 text-right font-semibold tabular-nums">{fmt(grams, grams < 100 ? 1 : 0)} g</td>
+      <td className="py-1.5 pr-4 text-right text-muted tabular-nums">{share}</td>
+      <td className="py-1.5 text-xs text-muted">{note}</td>
+    </tr>
+  )
+}
+
+function Phase({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <>
+      <tr>
+        <th colSpan={5} className="pt-4 pb-1 text-left text-xs font-semibold tracking-wide uppercase">
+          {title}
+        </th>
+      </tr>
+      {children}
+    </>
+  )
+}
+
+export function Worksheet() {
+  const { id } = useParams()
+  const recipe = useLiveQuery(() => (id ? db.recipes.get(id) : undefined), [id])
+  if (!recipe) return <p className="text-muted">Lade …</p>
+  const r = calculate(recipe.input)
+  const { input } = recipe
+  const profile = recipe.profileId ? PROFILES_BY_ID[recipe.profileId] : undefined
+  const findings = evaluate(r, profile)
+  const pctOfFats = (a: AdditiveLine) => `${fmt(a.percentOfFats, 1)} % d. GFM`
+  const lyePhase = r.additives.filter((a) => a.additive.phase === 'lye')
+  const fatPhase = r.additives.filter((a) => a.additive.phase === 'fats')
+  const tracePhase = r.additives.filter((a) => a.additive.phase === 'trace')
+  const acids = lyePhase.filter((a) => a.lyeConsumed > 0)
+  const purity = input.lyePurity / 100
+
+  return (
+    <article className="worksheet mx-auto max-w-3xl">
+      <div className="no-print mb-4 flex gap-2">
+        <Link className="btn" to={`/rezepte/${recipe.id}`}>
+          ← Zurück
+        </Link>
+        <button className="btn-primary" onClick={() => window.print()}>
+          Drucken
+        </button>
+      </div>
+
+      <header className="border-b-2 border-ink pb-3">
+        <p className="text-xs tracking-widest text-muted uppercase">Arbeitsblatt · Kaltverfahren</p>
+        <h1 className="text-2xl font-bold">{recipe.name}</h1>
+        {recipe.description && <p className="text-sm text-muted">{recipe.description}</p>}
+        <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <span>Fett: <b>{fmt(input.totalFat)} g</b></span>
+          <span>Überfettung: <b>{fmt(input.superfat, 1)} %</b></span>
+          <span>Wasser: <b>{fmt(r.water)} g</b></span>
+          <span>{input.lyeType}: <b>{fmt(r.lyeWeighed, 1)} g</b></span>
+          <span>Konzentration: <b>{fmt(r.lyeConcentration, 1)} %</b></span>
+        </p>
+      </header>
+
+      <table className="mt-2 w-full text-sm">
+        <tbody>
+          <Phase title="Phase A: Lauge">
+            <Row name="Wasser (destilliert / Osmose)" grams={r.water} share={`${fmt((r.water / input.totalFat) * 100, 1)} % d. GFM`} />
+            {acids.map((a) => (
+              <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note="Zuerst vollständig im kalten Wasser lösen, dann erst die Lauge." />
+            ))}
+            <Row
+              name={`${input.lyeType}${input.lyePurity < 100 ? ` (${fmt(input.lyePurity, 1)} %)` : ''}`}
+              grams={r.lyeWeighed}
+              share={`${fmt(input.superfat, 1)} % ÜF`}
+              note={
+                r.lyeForAdditives > 0
+                  ? `${fmt(r.lyeForFats / purity, 1)} g für Fette + ${fmt(r.lyeForAdditives / purity, 1)} g für Säure`
+                  : undefined
+              }
+            />
+            {lyePhase
+              .filter((a) => a.lyeConsumed === 0)
+              .map((a) => (
+                <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note={a.reason} />
+              ))}
+          </Phase>
+          <Phase title="Phase B: Fette & Öle">
+            {r.fats.map((l) => (
+              <Row key={l.fat.id} name={l.fat.name} grams={l.grams} share={`${fmt(l.percent, 1)} %`} />
+            ))}
+            {fatPhase.map((a) => (
+              <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note={a.reason} />
+            ))}
+          </Phase>
+          {tracePhase.length > 0 && (
+            <Phase title="Phase C: Zugabe in der Spur">
+              {tracePhase.map((a) => (
+                <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note={a.reason} />
+              ))}
+            </Phase>
+          )}
+        </tbody>
+      </table>
+
+      <p className="mt-3 text-xs text-muted">Gesamtgewicht Leim: {fmt(r.batchWeight)} g</p>
+
+      {findings.length > 0 && (
+        <ul className="mt-3 list-disc pl-5 text-xs">
+          {findings.map((f, i) => (
+            <li key={i}>{f.message}</li>
+          ))}
+        </ul>
+      )}
+
+      {recipe.notes && (
+        <section className="mt-4">
+          <h2 className="text-xs font-semibold tracking-wide uppercase">Notizen</h2>
+          <p className="text-sm whitespace-pre-wrap">{recipe.notes}</p>
+        </section>
+      )}
+
+      <section className="mt-6 break-inside-avoid">
+        <h2 className="text-xs font-semibold tracking-wide uppercase">Chargenprotokoll</h2>
+        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+          {['Siededatum', 'Chargen-Nr.', 'Temp. Lauge / Fette (°C)', 'Ausgeformt & geschnitten', 'Reif ab', 'pH- / Zungentest OK'].map((l) => (
+            <div key={l} className="border-b border-ink/40 pb-1 text-muted">
+              {l}:
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-sm text-muted">Notizen (Spur, Gelphase, Duft, Auffälligkeiten):</p>
+        <div className="mt-6 space-y-6">
+          <div className="border-b border-ink/40" />
+          <div className="border-b border-ink/40" />
+          <div className="border-b border-ink/40" />
+        </div>
+      </section>
+    </article>
+  )
+}
