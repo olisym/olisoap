@@ -122,3 +122,10 @@ body {
     margin: 15mm;
   }
 }
+
+/* Rasterzellen dürfen schmaler als ihr Inhalt werden, sonst schieben abgeschnittene Texte die Seite auf dem Handy seitlich auf. */
+@layer base {
+  .grid > * {
+    min-width: 0;
+  }
+}

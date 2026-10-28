@@ -5,11 +5,14 @@ import { NumberField } from '../components/NumberField'
 import { PageHeader } from '../components/ui'
 import { StockOverview } from './StockOverview'
 import {
+  bestProduct,
   CATEGORY_LABELS,
   materialKey,
+  type MaterialKey,
   packageGrams,
   offerPrice,
   pricePerKg,
+  type Inventory,
   type Lot,
   type Product,
   type ProductCategory,
@@ -17,11 +20,11 @@ import {
 } from '../core/inventory'
 import { ADDITIVES } from '../data/additives'
 import { FATS } from '../data/fats'
-import { db, loadInventory } from '../db'
+import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
 import { importSalandia } from '../import/salandia'
 import { importSalandiaCatalog, isCatalog } from '../import/salandiaCatalog'
-import { Upload } from 'lucide-react'
+import { ChevronRight, Upload } from 'lucide-react'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ProductCategory[]
 /** Kategorien, die in Seifenrezepten verrechnet werden. */
@@ -230,147 +233,218 @@ function AddLot({ onDone }: { onDone: () => void }) {
   )
 }
 
+type Scope = 'mine' | 'all'
+
+/** Materialien, die in mindestens einem Rezept vorkommen. */
+function recipeMaterials(recipes: Recipe[]): Set<MaterialKey> {
+  const keys = new Set<MaterialKey>()
+  for (const r of recipes) {
+    for (const f of r.input.fats) keys.add(`fat:${f.fatId}`)
+    for (const a of r.input.additives) keys.add(`additive:${a.additiveId}`)
+    if (r.input.lyeType !== 'KOH') keys.add('lye:NaOH')
+    if (r.input.lyeType !== 'NaOH') keys.add('lye:KOH')
+  }
+  return keys
+}
+
+/** Gruppen erst ab dieser Größe einklappen bzw. kürzen, damit lange Kataloge flüssig bleiben. */
+const PAGE = 40
+
 function Products() {
   const inv = useLiveQuery(loadInventory)
-  const [filter, setFilter] = useState<ProductCategory | 'soap' | 'all'>('soap')
+  const recipes = useLiveQuery(() => db.recipes.toArray())
+  const [scope, setScope] = useState<Scope>('mine')
+  const [filter, setFilter] = useState<ProductCategory | 'all'>('all')
   const [q, setQ] = useState('')
-  if (!inv) return null
-  const update = (id: string, patch: Partial<Product>) => db.products.update(id, patch)
+  if (!inv || !recipes) return null
+
+  const bought = new Set([...inv.purchases.map((p) => p.productId), ...inv.lots.map((l) => l.productId)])
+  // Je Rezept-Material nur die Packung, die der Einkauf vorschlagen würde, nicht alle Größen und Qualitäten.
+  const suggested = new Set([...recipeMaterials(recipes)].map((k) => bestProduct(inv, k)?.id))
+  // „Meine Artikel“: gekauft, im Vorrat, selbst angelegt oder Einkaufsvorschlag für ein Rezept.
+  const isMine = (p: Product) => bought.has(p.id) || p.listPrice === undefined || suggested.has(p.id)
+  const needle = q.trim().toLowerCase()
   const products = inv.products
-    .filter((p) => filter === 'all' || (filter === 'soap' ? SOAP_CATEGORIES.includes(p.category) : p.category === filter))
-    .filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase()))
-    .sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || a.name.localeCompare(b.name))
+    .filter((p) => filter === 'all' || p.category === filter)
+    .filter((p) => !needle || `${p.name} ${p.shopCategory ?? ''}`.toLowerCase().includes(needle))
+    .filter((p) => scope === 'all' || needle || isMine(p))
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+  const groups = CATEGORIES.map((c) => ({ category: c, items: products.filter((p) => p.category === c) })).filter((g) => g.items.length)
+  const mineCount = inv.products.filter(isMine).length
 
   async function addProduct() {
     await db.products.add({ id: crypto.randomUUID(), name: 'Neuer Artikel', category: 'lye', lyeType: 'NaOH', unit: 'g', packageSize: 1000 })
-    setFilter('soap')
+    setScope('mine')
+    setFilter('all')
   }
+
+  const tab = (active: boolean) => `min-h-10 rounded-lg px-3 text-sm font-medium ${active ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink'}`
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <select className="field" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
-          <option value="soap">Seifenrelevant</option>
-          <option value="all">Alle</option>
+        <div className="inline-flex gap-1 rounded-xl bg-surface-2 p-1" role="group" aria-label="Umfang">
+          <button className={tab(scope === 'mine')} aria-pressed={scope === 'mine'} onClick={() => setScope('mine')}>
+            Meine Artikel ({mineCount})
+          </button>
+          <button className={tab(scope === 'all')} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>
+            Ganzer Katalog ({inv.products.length})
+          </button>
+        </div>
+        <select className="field" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Kategorie">
+          <option value="all">Alle Kategorien</option>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {CATEGORY_LABELS[c]}
             </option>
           ))}
         </select>
+        <input className="field min-w-48 flex-1" placeholder="Suchen, auch im ganzen Katalog" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Artikel suchen" />
         <button className="btn" onClick={addProduct}>
           + Artikel anlegen
         </button>
-        <input className="field min-w-48 flex-1" placeholder="Artikel suchen" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Artikel suchen" />
-        <span className="text-sm text-muted">{products.length} Artikel</span>
       </div>
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs text-muted">
-            <tr>
-              <th className="pb-2 font-normal">Artikel</th>
-              <th className="pb-2 font-normal">Kategorie / Material</th>
-              <th className="w-40 pb-2 font-normal">Packung</th>
-              <th className="w-24 pb-2 font-normal" title="g/ml, nur für Ware nach Volumen">
-                Dichte
-              </th>
-              <th className="pb-2 text-right font-normal">Letzter Preis</th>
-              <th className="pb-2 text-right font-normal">€/kg</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => {
-              const last = offerPrice(inv, p)
-              const perKg = last ? pricePerKg(p, last.unitPrice) : undefined
-              const unlinked = SOAP_CATEGORIES.includes(p.category) && !materialKey(p)
-              return (
-                <tr key={p.id} className="border-t border-line align-top">
-                  <td className="py-1.5 pr-2">
-                    <input className="field w-full min-w-56" value={p.name} onChange={(e) => update(p.id, { name: e.target.value })} />
-                    {p.url && (
-                      <a className="text-xs text-accent hover:underline" href={p.url} target="_blank" rel="noreferrer">
-                        {p.supplier ?? 'Shop'} {p.sku}
-                      </a>
-                    )}
-                  </td>
-                  <td className="space-y-1 py-1.5 pr-2">
-                    <select className="field w-full" value={p.category} onChange={(e) => update(p.id, { category: e.target.value as ProductCategory })}>
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {CATEGORY_LABELS[c]}
-                        </option>
-                      ))}
-                    </select>
-                    {p.category === 'fat' && (
-                      <select className={`field w-full ${unlinked ? 'border-amber-500' : ''}`} value={p.fatId ?? ''} onChange={(e) => update(p.id, { fatId: e.target.value || undefined })}>
-                        <option value="">– Fett zuordnen –</option>
-                        {FATS.map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {p.category === 'additive' && (
-                      <select className={`field w-full ${unlinked ? 'border-amber-500' : ''}`} value={p.additiveId ?? ''} onChange={(e) => update(p.id, { additiveId: e.target.value || undefined })}>
-                        <option value="">– Zusatz zuordnen –</option>
-                        {ADDITIVES.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {p.category === 'lye' && (
-                      <select className="field w-full" value={p.lyeType ?? ''} onChange={(e) => update(p.id, { lyeType: (e.target.value || undefined) as Product['lyeType'] })}>
-                        <option value="">– Lauge wählen –</option>
-                        <option value="NaOH">NaOH</option>
-                        <option value="KOH">KOH</option>
-                      </select>
-                    )}
-                  </td>
-                  <td className="py-1.5 pr-2">
-                    <span className="flex gap-1">
-                      <NumberField value={p.packageSize} digits={1} ariaLabel="Packungsgröße" onChange={(v) => update(p.id, { packageSize: v ?? 0 })} />
-                      <select className="field" value={p.unit} onChange={(e) => update(p.id, { unit: e.target.value as ProductUnit })}>
-                        <option>g</option>
-                        <option>ml</option>
-                        <option>Stk</option>
-                      </select>
-                    </span>
-                  </td>
-                  <td className="py-1.5 pr-2">
-                    {p.unit === 'ml' && (
-                      <NumberField value={p.density} digits={3} placeholder={fmt(packageGrams({ ...p, packageSize: 1 }) ?? 1, 3)} ariaLabel="Dichte" onChange={(v) => update(p.id, { density: v })} />
-                    )}
-                  </td>
-                  <td className="py-1.5 text-right tabular-nums">
-                    {last ? (
-                      <>
-                        {fmt(last.unitPrice, 2)} €
-                        <div className="text-xs text-muted">
-                          {last.source === 'list' ? 'Shop' : 'gekauft'} {new Date(last.date).toLocaleDateString('de-DE')}
-                          {p.available === false && ' · nicht lieferbar'}
-                        </div>
-                      </>
-                    ) : (
-                      <PriceEntry productId={p.id} />
-                    )}
-                  </td>
-                  <td className="py-1.5 pl-3 text-right font-semibold tabular-nums">{perKg !== undefined ? fmt(perKg, 2) : '–'}</td>
-                  <td>
-                    <button className="btn-icon" aria-label="Artikel löschen" onClick={() => confirm(`„${p.name}“ löschen?`) && db.products.delete(p.id)}>
-                      ×
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      {scope === 'mine' && !needle && (
+        <p className="text-xs text-muted">Gekauft, im Vorrat, selbst angelegt oder Einkaufsvorschlag für deine Rezepte. Die Suche findet alles.</p>
+      )}
+      {groups.length === 0 && <p className="text-sm text-muted">Nichts gefunden.</p>}
+      {groups.map((g) => (
+        <ProductGroup key={`${scope}-${g.category}`} title={CATEGORY_LABELS[g.category]} items={g.items} inv={inv} open={scope === 'mine' || !!needle || groups.length === 1} />
+      ))}
     </div>
+  )
+}
+
+function ProductGroup({ title, items, inv, open }: { title: string; items: Product[]; inv: Inventory; open: boolean }) {
+  const [expanded, setExpanded] = useState(open)
+  const [limit, setLimit] = useState(PAGE)
+  return (
+    <details className="group card" open={expanded} onToggle={(e) => setExpanded(e.currentTarget.open)}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 font-semibold">
+        <ChevronRight size={18} className="text-muted transition-transform group-open:rotate-90" aria-hidden />
+        <span className="flex-1">{title}</span>
+        <span className="text-sm font-normal text-muted">{items.length} Artikel</span>
+      </summary>
+      {expanded && (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-muted">
+              <tr>
+                <th className="pb-2 font-normal">Artikel</th>
+                <th className="pb-2 font-normal">Kategorie / Material</th>
+                <th className="w-40 pb-2 font-normal">Packung</th>
+                <th className="w-24 pb-2 font-normal" title="g/ml, nur für Ware nach Volumen">
+                  Dichte
+                </th>
+                <th className="pb-2 text-right font-normal">Letzter Preis</th>
+                <th className="pb-2 text-right font-normal">€/kg</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {items.slice(0, limit).map((p) => (
+                <ProductRow key={p.id} p={p} inv={inv} />
+              ))}
+            </tbody>
+          </table>
+          {items.length > limit && (
+            <button className="btn-ghost mt-2" onClick={() => setLimit(items.length)}>
+              Alle {items.length} zeigen
+            </button>
+          )}
+        </div>
+      )}
+    </details>
+  )
+}
+
+function ProductRow({ p, inv }: { p: Product; inv: Inventory }) {
+  const update = (id: string, patch: Partial<Product>) => db.products.update(id, patch)
+  const last = offerPrice(inv, p)
+  const perKg = last ? pricePerKg(p, last.unitPrice) : undefined
+  const unlinked = SOAP_CATEGORIES.includes(p.category) && !materialKey(p)
+  return (
+    <tr key={p.id} className="border-t border-line align-top">
+      <td className="py-1.5 pr-2">
+        <input className="field w-full min-w-56" value={p.name} onChange={(e) => update(p.id, { name: e.target.value })} />
+        {p.url && (
+          <a className="text-xs text-accent hover:underline" href={p.url} target="_blank" rel="noreferrer">
+            {p.supplier ?? 'Shop'} {p.sku}
+          </a>
+        )}
+        {p.shopCategory && <span className="ml-2 text-xs text-muted">{p.shopCategory}</span>}
+      </td>
+      <td className="space-y-1 py-1.5 pr-2">
+        <select className="field w-full" value={p.category} onChange={(e) => update(p.id, { category: e.target.value as ProductCategory })}>
+          {CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {CATEGORY_LABELS[c]}
+            </option>
+          ))}
+        </select>
+        {p.category === 'fat' && (
+          <select className={`field w-full ${unlinked ? 'border-amber-500' : ''}`} value={p.fatId ?? ''} onChange={(e) => update(p.id, { fatId: e.target.value || undefined })}>
+            <option value="">– Fett zuordnen –</option>
+            {FATS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {p.category === 'additive' && (
+          <select className={`field w-full ${unlinked ? 'border-amber-500' : ''}`} value={p.additiveId ?? ''} onChange={(e) => update(p.id, { additiveId: e.target.value || undefined })}>
+            <option value="">– Zusatz zuordnen –</option>
+            {ADDITIVES.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {p.category === 'lye' && (
+          <select className="field w-full" value={p.lyeType ?? ''} onChange={(e) => update(p.id, { lyeType: (e.target.value || undefined) as Product['lyeType'] })}>
+            <option value="">– Lauge wählen –</option>
+            <option value="NaOH">NaOH</option>
+            <option value="KOH">KOH</option>
+          </select>
+        )}
+      </td>
+      <td className="py-1.5 pr-2">
+        <span className="flex gap-1">
+          <NumberField value={p.packageSize} digits={1} ariaLabel="Packungsgröße" onChange={(v) => update(p.id, { packageSize: v ?? 0 })} />
+          <select className="field" value={p.unit} onChange={(e) => update(p.id, { unit: e.target.value as ProductUnit })}>
+            <option>g</option>
+            <option>ml</option>
+            <option>Stk</option>
+          </select>
+        </span>
+      </td>
+      <td className="py-1.5 pr-2">
+        {p.unit === 'ml' && (
+          <NumberField value={p.density} digits={3} placeholder={fmt(packageGrams({ ...p, packageSize: 1 }) ?? 1, 3)} ariaLabel="Dichte" onChange={(v) => update(p.id, { density: v })} />
+        )}
+      </td>
+      <td className="py-1.5 text-right tabular-nums">
+        {last ? (
+          <>
+            {fmt(last.unitPrice, 2)} €
+            <div className="text-xs text-muted">
+              {last.source === 'list' ? 'Shop' : 'gekauft'} {new Date(last.date).toLocaleDateString('de-DE')}
+              {p.available === false && ' · nicht lieferbar'}
+            </div>
+          </>
+        ) : (
+          <PriceEntry productId={p.id} />
+        )}
+      </td>
+      <td className="py-1.5 pl-3 text-right font-semibold tabular-nums">{perKg !== undefined ? fmt(perKg, 2) : '–'}</td>
+      <td>
+        <button className="btn-icon" aria-label="Artikel löschen" onClick={() => confirm(`„${p.name}“ löschen?`) && db.products.delete(p.id)}>
+          ×
+        </button>
+      </td>
+    </tr>
   )
 }
 

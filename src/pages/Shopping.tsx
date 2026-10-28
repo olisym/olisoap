@@ -260,30 +260,39 @@ function Incoming({ item, product }: { item: OrderItem; product?: Product }) {
 }
 
 function AddManual({ products }: { products: Product[] }) {
-  const [productId, setProductId] = useState('')
-  const sorted = [...products].sort((a, b) => Number(!materialKey(a)) - Number(!materialKey(b)) || a.name.localeCompare(b.name))
+  const [q, setQ] = useState('')
+  // Suche statt Auswahlliste: bei über 2000 Katalog-Artikeln ist ein Menü nicht bedienbar.
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const matches = words.length
+    ? products
+        .filter((p) => words.every((w) => p.name.toLowerCase().includes(w)))
+        .sort((a, b) => Number(!materialKey(a)) - Number(!materialKey(b)) || a.name.localeCompare(b.name, 'de'))
+        .slice(0, 8)
+    : []
+
+  async function add(product: Product) {
+    const inv = { products, purchases: await db.purchases.where('productId').equals(product.id).toArray(), lots: [] }
+    await db.orderItems.add({ id: crypto.randomUUID(), productId: product.id, packages: 1, unitPrice: offerPrice(inv, product)?.unitPrice, status: 'open', createdAt: new Date().toISOString() })
+    setQ('')
+  }
+
   return (
-    <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
-      <select className="field min-w-0 flex-1" value={productId} onChange={(e) => setProductId(e.target.value)} aria-label="Artikel hinzufügen">
-        <option value="">Artikel direkt hinzufügen …</option>
-        {sorted.map((p) => (
-          <option key={p.id} value={p.id}>
-            {CATEGORY_LABELS[p.category]}: {p.name}
-          </option>
-        ))}
-      </select>
-      <button
-        className="btn"
-        disabled={!productId}
-        onClick={async () => {
-          const product = products.find((p) => p.id === productId)
-          const inv = { products, purchases: await db.purchases.where('productId').equals(productId).toArray(), lots: [] }
-          await db.orderItems.add({ id: crypto.randomUUID(), productId, packages: 1, unitPrice: product && offerPrice(inv, product)?.unitPrice, status: 'open', createdAt: new Date().toISOString() })
-          setProductId('')
-        }}
-      >
-        <Plus size={18} /> Hinzufügen
-      </button>
+    <div className="mt-5 space-y-2 border-t border-line pt-4">
+      <input className="field w-full" placeholder="Artikel direkt hinzufügen, z. B. Lavendel" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Artikel suchen und hinzufügen" />
+      {matches.length > 0 && (
+        <ul className="space-y-1">
+          {matches.map((p) => (
+            <li key={p.id}>
+              <button className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-surface-2" onClick={() => add(p)}>
+                <Plus size={16} className="shrink-0 text-accent" aria-hidden />
+                <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                <span className="shrink-0 text-xs text-muted">{CATEGORY_LABELS[p.category]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {words.length > 0 && matches.length === 0 && <p className="text-sm text-muted">Nichts gefunden.</p>}
     </div>
   )
 }
