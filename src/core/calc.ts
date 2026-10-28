@@ -79,9 +79,10 @@ export interface RecipeResult {
   /** Einzuwiegende Lauge unter Berücksichtigung der Reinheit, bei Mischlauge die Summe beider Sorten. */
   lyeWeighed: number
   lyeParts: LyePart[]
+  /** Einzuwiegendes Wasser (Gesamtwasser abzüglich Wasser aus Zusätzen). */
   water: number
   waterFromAdditives: number
-  /** Laugenkonzentration der angesetzten Lauge: Lauge / (Lauge + Wasser). */
+  /** Laugenkonzentration bezogen auf das Gesamtwasser: Lauge / (Lauge + Wasser + Wasser aus Zusätzen). */
   lyeConcentration: number
   batchWeight: number
   fattyAcids: Required<FattyAcids>
@@ -177,8 +178,9 @@ export function calculate(input: RecipeInput): RecipeResult {
   const lyePure = lyeForFats + lyeForAdditives
   const parts = lyeParts(input, lyePure)
   const lyeWeighed = parts.reduce((s, p) => s + p.weighed, 0)
-  const water = waterAmount(input.water, input.totalFat, lyeWeighed)
+  // Wasser aus flüssigen Zusätzen (z. B. Natriumlaktat-Lösung) zählt zum Gesamtwasser und wird abgezogen.
   const waterFromAdditives = additives.reduce((s, a) => s + a.water, 0)
+  const water = Math.max(0, waterAmount(input.water, input.totalFat, lyeWeighed) - waterFromAdditives)
 
   return {
     input,
@@ -192,7 +194,7 @@ export function calculate(input: RecipeInput): RecipeResult {
     lyeParts: parts,
     water,
     waterFromAdditives,
-    lyeConcentration: lyeWeighed + water > 0 ? (lyeWeighed / (lyeWeighed + water)) * 100 : 0,
+    lyeConcentration: lyeWeighed + water + waterFromAdditives > 0 ? (lyeWeighed / (lyeWeighed + water + waterFromAdditives)) * 100 : 0,
     batchWeight: input.totalFat + lyeWeighed + water + additives.reduce((s, a) => s + a.grams, 0),
     fattyAcids: blendFattyAcids(fats),
     properties: soapProperties(fats),

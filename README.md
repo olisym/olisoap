@@ -4,9 +4,11 @@ Werkstatt-Software für Heimseifensieder: Rezepte entwerfen und berechnen, Arbei
 Später kommen Lager, Kosten, Chargen und ein Reste-Optimierer dazu. Leitlinie: **evidenzbasiert, ohne Nonsens.**
 Jede Zutat braucht einen Grund.
 
-## Stand (v0.3)
+## Stand (v0.4)
 
-- **Laugenrechner** (NaOH/KOH, Reinheit, Überfettung, drei Wassermodi), Säuren wie Zitronensäure werden automatisch verrechnet
+- **Grundseifen und Varianten**: Körper-, Haar- und Rasierseife als Grundseifen, Varianten zeigen ihre Unterschiede zur Grundseife
+- **Laugenrechner** (NaOH, KOH oder Mischlauge, Reinheit, Überfettung, drei Wassermodi), Säuren wie Zitronensäure werden
+  automatisch verrechnet, Wasser aus flüssigen Zusätzen wird vom Gesamtwasser abgezogen
 - **Kennzahlen** (Härte, Reinigung, Pflege, Schaum, Jodzahl, INS, Linol-/Linolensäure) mit **Zielprofilen**
 - **Zusätze** mit Zweck, Evidenz-Einordnung und eigener Begründung
 - **Arbeitsblatt** zum Drucken mit Phasen und Chargenprotokoll

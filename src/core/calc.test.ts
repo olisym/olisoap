@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KOERPERSEIFE_2 } from '../data/seedRecipes'
+import { REFERENCE_2000G } from './fixtures'
 import { calculate, sapValue } from './calc'
 import { correct } from './correction'
 import { evaluate } from './evaluate'
@@ -56,13 +56,15 @@ describe('calculate', () => {
     expect(ratio.water).toBeCloseTo(ratio.lyeWeighed * 2, 6)
   })
 
-  it('Körperseife 2.0 stimmt mit dem Arbeitsblatt überein', () => {
-    const r = calculate(KOERPERSEIFE_2.input)
+  it('Referenzrezept stimmt mit dem handgerechneten Arbeitsblatt überein', () => {
+    const r = calculate(REFERENCE_2000G)
     // Arbeitsblatt: 256 g für die Fette + 25 g für die Zitronensäure = 281 g. Tabellenwerte schwanken um ±1 %.
     expect(r.lyeForFats).toBeGreaterThan(253)
     expect(r.lyeForFats).toBeLessThan(259)
     expect(r.lyeForAdditives).toBeCloseTo(24.98, 1)
-    expect(r.water).toBe(600)
+    // 600 g Gesamtwasser, davon 16 g aus der 60%igen Natriumlaktat-Lösung
+    expect(r.water + r.waterFromAdditives).toBe(600)
+    expect(r.waterFromAdditives).toBeCloseTo(16, 6)
     expect(r.properties.polyunsaturated).toBeLessThan(15)
   })
 })
@@ -91,7 +93,7 @@ describe('correct', () => {
   })
 
   it('Säure wird bei der Korrektur berücksichtigt', () => {
-    const p = calculate(KOERPERSEIFE_2.input)
+    const p = calculate(REFERENCE_2000G)
     const c = correct(p, {})
     expect(c.superfatActual).toBeCloseTo(10, 6)
   })
