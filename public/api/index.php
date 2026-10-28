@@ -25,8 +25,47 @@ function fail(int $code, string $message): never
     exit;
 }
 
+// Jeder unerwartete Fehler kommt als lesbare JSON-Meldung zurück statt als leere 500-Seite.
+// Details (ohne Zugangsdaten) landen zusätzlich im PHP-Fehlerprotokoll des Webspace.
+set_exception_handler(function (Throwable $e): void {
+    error_log('olisoap-api: ' . $e::class . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    $hint = $e instanceof PDOException ? 'Datenbankfehler (SQLSTATE ' . $e->getCode() . ')' : 'Serverfehler (' . $e::class . ')';
+    fail(500, $hint);
+});
+
 $configFile = getenv('OLISOAP_CONFIG') ?: dirname(__DIR__, 2) . '/olisoap-config.php';
-if (!is_file($configFile)) fail(500, 'Konfiguration fehlt');
+$action = $_GET['a'] ?? '';
+
+// Diagnose: im Browser aufrufbar unter api/index.php?a=health, zeigt keine Zugangsdaten.
+if ($action === 'health') {
+    $report = ['php' => PHP_VERSION, 'pdo_mysql' => extension_loaded('pdo_mysql'), 'config' => @is_file($configFile)];
+    if (!$report['config']) {
+        $report['hint'] = 'olisoap-config.php nicht gefunden. Erwartet eine Ebene über httpdocs: ' . basename(dirname(__DIR__, 2)) . '/olisoap-config.php';
+        echo json_encode($report, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+    $c = require $configFile;
+    $report['config_ok'] = is_array($c) && isset($c['dsn']);
+    try {
+        $pdo = new PDO($c['dsn'], $c['user'] ?? null, $c['password'] ?? null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $report['database'] = 'verbunden';
+        $pfx = preg_replace('/[^a-z0-9_]/i', '', $c['prefix'] ?? 'olisoap_');
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS {$pfx}healthcheck (id INT PRIMARY KEY)");
+            $pdo->exec("DROP TABLE {$pfx}healthcheck");
+            $report['create_table'] = 'erlaubt';
+        } catch (PDOException $e) {
+            $report['create_table'] = 'nicht erlaubt (SQLSTATE ' . $e->getCode() . '). Der Datenbank-Benutzer braucht das Recht CREATE.';
+        }
+    } catch (PDOException $e) {
+        $report['database'] = 'Verbindung fehlgeschlagen (SQLSTATE ' . $e->getCode() . '). Host, Datenbankname, Benutzer und Passwort in der Konfiguration prüfen.';
+    }
+    $report['register_code_gesetzt'] = ($c['register_code'] ?? '') !== '';
+    echo json_encode($report, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+if (!is_file($configFile)) fail(500, 'Konfiguration fehlt: olisoap-config.php eine Ebene über httpdocs ablegen');
 $config = require $configFile;
 
 // CORS nur für ausdrücklich erlaubte Herkünfte (z. B. die GitHub-Pages-Version).
@@ -46,8 +85,8 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
-} catch (PDOException) {
-    fail(500, 'Datenbank nicht erreichbar');
+} catch (PDOException $e) {
+    fail(500, 'Datenbank nicht erreichbar (SQLSTATE ' . $e->getCode() . ')');
 }
 $mysql = $db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql';
 
@@ -66,7 +105,6 @@ try {
 
 $body = json_decode(file_get_contents('php://input') ?: '{}', true);
 if (!is_array($body)) fail(400, 'Ungültiges JSON');
-$action = $_GET['a'] ?? '';
 $now = (int) (microtime(true) * 1000);
 const SESSION_DAYS = 90;
 
@@ -88,12 +126,19 @@ function credentials(array $body): array
     return [$user, $auth];
 }
 
-function currentUser(PDO $db, string $p, int $now): int
+/** Sitzungstoken aus dem JSON-Körper (funktioniert überall) oder dem Authorization-Header. */
+function sessionToken(array $body): string
 {
-    $h = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-    if (!preg_match('/^Bearer ([0-9a-f]{64})$/', $h, $m)) fail(401, 'Nicht angemeldet');
+    $t = (string) ($body['token'] ?? '');
+    if ($t === '' && preg_match('/^Bearer (\S+)$/', $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '', $m)) $t = $m[1];
+    if (!preg_match('/^[0-9a-f]{64}$/', $t)) fail(401, 'Nicht angemeldet');
+    return $t;
+}
+
+function currentUser(PDO $db, string $p, int $now, array $body): int
+{
     $st = $db->prepare("SELECT user_id FROM {$p}sessions WHERE token_hash = ? AND expires_at > ?");
-    $st->execute([hash('sha256', $m[1]), $now]);
+    $st->execute([hash('sha256', sessionToken($body)), $now]);
     $id = $st->fetchColumn();
     if ($id === false) fail(401, 'Sitzung abgelaufen');
     return (int) $id;
@@ -140,14 +185,13 @@ switch ($action) {
         break;
     }
     case 'logout': {
-        $uid = currentUser($db, $p, $now);
-        $h = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-        $db->prepare("DELETE FROM {$p}sessions WHERE token_hash = ? AND user_id = ?")->execute([hash('sha256', substr($h, 7)), $uid]);
+        $uid = currentUser($db, $p, $now, $body);
+        $db->prepare("DELETE FROM {$p}sessions WHERE token_hash = ? AND user_id = ?")->execute([hash('sha256', sessionToken($body)), $uid]);
         echo json_encode(['ok' => true]);
         break;
     }
     case 'pull': {
-        $uid = currentUser($db, $p, $now);
+        $uid = currentUser($db, $p, $now, $body);
         $since = (int) ($body['since'] ?? 0);
         $limit = 500;
         $st = $db->prepare("SELECT tbl, rid, seq, deleted, data FROM {$p}records WHERE user_id = ? AND seq > ? ORDER BY seq LIMIT $limit");
@@ -160,7 +204,7 @@ switch ($action) {
         break;
     }
     case 'push': {
-        $uid = currentUser($db, $p, $now);
+        $uid = currentUser($db, $p, $now, $body);
         $records = $body['records'] ?? [];
         if (!is_array($records) || count($records) > 500) fail(400, 'Höchstens 500 Datensätze pro Aufruf');
         $upsert = $mysql

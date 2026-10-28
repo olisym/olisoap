@@ -75,11 +75,12 @@ class HttpError extends Error {
 async function call<T>(server: string, action: string, body: unknown, token?: string): Promise<T> {
   const res = await fetch(`${server}?a=${action}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
-    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+    // Token im Körper statt im Authorization-Header: manche Webspaces reichen den Header nicht an PHP weiter.
+    body: JSON.stringify(token ? { ...(body as object), token } : body),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new HttpError(res.status, (data as { error?: string }).error ?? `Fehler ${res.status}`)
+  if (!res.ok) throw new HttpError(res.status, (data as { error?: string }).error ?? `Fehler ${res.status} (Diagnose: ${server}?a=health)`)
   return data as T
 }
 
