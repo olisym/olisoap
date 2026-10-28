@@ -4,13 +4,15 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Findings } from '../components/Findings'
 import { NumberField } from '../components/NumberField'
 import { PropertyBars } from '../components/PropertyBars'
-import { calculate, sapValue } from '../core/calc'
+import { calculate, sapValue, type RecipeResult } from '../core/calc'
+import { barCount, recipeCost } from '../core/cost'
+import { materialPrice, materialStock, type Inventory } from '../core/inventory'
 import { evaluate } from '../core/evaluate'
 import type { RecipeInput, WaterMode } from '../core/types'
 import { ADDITIVES, ADDITIVES_BY_ID } from '../data/additives'
 import { FATS } from '../data/fats'
 import { PROFILES, PROFILES_BY_ID } from '../data/profiles'
-import { db, type Recipe } from '../db'
+import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
 
 const WATER_LABELS: Record<WaterMode['mode'], string> = {
@@ -23,6 +25,7 @@ export function RecipeEditor() {
   const { id } = useParams()
   const stored = useLiveQuery(() => (id ? db.recipes.get(id) : undefined), [id])
   const [draft, setDraft] = useState<Recipe>()
+  const inventory = useLiveQuery(loadInventory)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -200,6 +203,7 @@ export function RecipeEditor() {
                 </p>
               </div>
               <Findings findings={findings} />
+              {inventory && <CostCard result={result} inventory={inventory} barWeight={draft.barWeight ?? 100} onBarWeight={(barWeight) => set({ barWeight })} />}
             </>
           )}
         </aside>
@@ -365,6 +369,67 @@ function AdditiveTable({ draft, setInput }: TableProps) {
       <button className="btn mt-3" onClick={() => setInput({ additives: [...input.additives, { additiveId: ADDITIVES[0].id, percentOfFats: 1 }] })}>
         + Zusatz
       </button>
+    </div>
+  )
+}
+
+interface CostProps {
+  result: RecipeResult
+  inventory: Inventory
+  barWeight: number
+  onBarWeight: (g: number | undefined) => void
+}
+
+function CostCard({ result, inventory, barWeight, onBarWeight }: CostProps) {
+  const cost = recipeCost(result, (key) => materialPrice(inventory, key))
+  const bars = barCount(result.batchWeight, barWeight)
+  const hasStock = inventory.lots.length > 0
+
+  return (
+    <div className="card">
+      <h2 className="mb-2 font-semibold">Kosten{hasStock && ' & Bestand'}</h2>
+      <table className="w-full text-sm tabular-nums [&_td+td]:whitespace-nowrap">
+        <thead className="text-left text-xs text-muted">
+          <tr>
+            <th className="font-normal">Zutat</th>
+            <th className="text-right font-normal">Bedarf</th>
+            {hasStock && <th className="text-right font-normal">Lager</th>}
+            <th className="text-right font-normal">€</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cost.lines.map((l) => {
+            const stock = materialStock(inventory, l.key)
+            return (
+              <tr key={l.key} className="border-t border-line">
+                <td className="py-1 pr-2">{l.name}</td>
+                <td className="text-right">{fmt(l.grams, l.grams < 100 ? 1 : 0)} g</td>
+                {hasStock && <td className={`pl-2 text-right ${stock < l.grams ? 'font-semibold text-red-600' : 'text-muted'}`}>{fmt(stock)} g</td>}
+                <td className="pl-2 text-right" title={l.price ? `${fmt(l.price.pricePerKg, 2)} €/kg (${l.price.source === 'stock' ? 'Lager' : `Einkauf ${l.price.date}`})` : 'kein Preis bekannt'}>
+                  {l.cost !== undefined ? fmt(l.cost, 2) : '–'}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <dl className="mt-3 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 border-t border-line pt-3 text-sm tabular-nums">
+        <dt className="font-semibold">Gesamt</dt>
+        <dd className="text-right text-lg font-semibold">{fmt(cost.total, 2)} €</dd>
+        <dt>Stückgewicht frisch</dt>
+        <dd className="w-28">
+          <NumberField value={barWeight} digits={0} suffix="g" ariaLabel="Stückgewicht" onChange={onBarWeight} />
+        </dd>
+        <dt>Stücke</dt>
+        <dd className="text-right">{bars}</dd>
+        <dt className="font-semibold">pro Stück</dt>
+        <dd className="text-right text-lg font-semibold">{bars > 0 ? `${fmt(cost.total / bars, 2)} €` : '–'}</dd>
+      </dl>
+      {cost.missing.length > 0 && (
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+          Ohne Preis (nicht eingerechnet): {cost.missing.join(', ')}. Preise unter Lager → Artikel & Preise erfassen.
+        </p>
+      )}
     </div>
   )
 }

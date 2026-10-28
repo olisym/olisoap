@@ -2,12 +2,14 @@ import { HashRouter, NavLink, Route, Routes } from 'react-router-dom'
 import { Correction } from './pages/Correction'
 import { DataPage } from './pages/DataPage'
 import { FatList } from './pages/FatList'
+import { InventoryPage } from './pages/InventoryPage'
 import { RecipeEditor } from './pages/RecipeEditor'
 import { RecipeList } from './pages/RecipeList'
 import { Worksheet } from './pages/Worksheet'
 
 const NAV = [
   ['/', 'Rezepte'],
+  ['/lager', 'Lager'],
   ['/korrektur', 'Korrektur'],
   ['/fette', 'Fette & Öle'],
   ['/daten', 'Daten'],
@@ -38,6 +40,7 @@ export default function App() {
           <Route path="/rezepte/:id/druck" element={<Worksheet />} />
           <Route path="/korrektur" element={<Correction />} />
           <Route path="/korrektur/:id" element={<Correction />} />
+          <Route path="/lager/*" element={<InventoryPage />} />
           <Route path="/fette" element={<FatList />} />
           <Route path="/daten" element={<DataPage />} />
         </Routes>
