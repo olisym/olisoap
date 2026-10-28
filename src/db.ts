@@ -71,12 +71,13 @@ export interface Batch {
   cutWeight?: number
   /** Einzelgewichte der Stücke beim Schneiden in g. */
   cutWeights?: number[]
-  /** Für wen gesiedet (Geschenk, Auftrag). */
-  recipient?: string
   /** Etikett gedruckt am. */
   labeledAt?: string
   /** "Am besten verwenden bis" für das Etikett. Fehlt = Vorschlag aus MHD der Fette. */
   bestUse?: string
+  /** Etikett-Text für diese Charge, falls abweichend vom Rezept. */
+  labelTitle?: string
+  labelSubtitle?: string
 }
 
 /** Rasierseife im Tiegel wird nicht ausgeformt und geschnitten. */
@@ -99,6 +100,13 @@ export const db = new Dexie('olisoap') as Dexie & {
   lots: EntityTable<Lot, 'id'>
   batches: EntityTable<Batch, 'id'>
   orderItems: EntityTable<OrderItem, 'id'>
+  settings: EntityTable<Setting, 'key'>
+}
+
+/** Einstellungen als Schlüssel-Wert-Paare, z. B. das Etikett-Design. Liegen in der Datenbank, damit sie mit gesichert werden. */
+export interface Setting {
+  key: string
+  value: unknown
 }
 
 db.version(1).stores({
@@ -137,6 +145,16 @@ db.version(4).stores({
   orderItems: 'id, productId, status',
 })
 
+db.version(5).stores({
+  recipes: 'id, name, updatedAt',
+  products: 'id, name, category, sku',
+  purchases: 'id, productId, date',
+  lots: 'id, productId',
+  batches: 'id, recipeId, date, number',
+  orderItems: 'id, productId, status',
+  settings: 'key',
+})
+
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
 })
@@ -159,7 +177,7 @@ export interface BatchOptions {
   cureWeeks: number
   deductStock: boolean
   /** Weitere Angaben aus dem Siedeprotokoll (Temperaturen, Notizen). */
-  extra?: Pick<Partial<Batch>, 'lyeTemp' | 'fatTemp' | 'notes' | 'recipient'>
+  extra?: Pick<Partial<Batch>, 'lyeTemp' | 'fatTemp' | 'notes'>
 }
 
 /** Siedet ein Rezept: legt die Charge an und bucht auf Wunsch den Verbrauch aus dem Lager ab. */
@@ -226,7 +244,7 @@ export async function receiveOrderItem(item: OrderItem, unitPrice: number | unde
 
 export interface Backup {
   app: 'olisoap'
-  version: 4
+  version: 5
   exportedAt: string
   recipes: Recipe[]
   products: Product[]
@@ -234,18 +252,20 @@ export interface Backup {
   lots: Lot[]
   batches: Batch[]
   orderItems: OrderItem[]
+  settings: Setting[]
 }
 
-const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches', 'orderItems'] as const
+const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches', 'orderItems', 'settings'] as const
 
 export async function exportBackup(): Promise<Backup> {
   return {
     app: 'olisoap',
-    version: 4,
+    version: 5,
     exportedAt: new Date().toISOString(),
     recipes: await db.recipes.toArray(),
     batches: await db.batches.toArray(),
     orderItems: await db.orderItems.toArray(),
+    settings: await db.settings.toArray(),
     ...(await loadInventory()),
   }
 }
@@ -254,7 +274,7 @@ export async function exportBackup(): Promise<Backup> {
 export async function importBackup(data: unknown): Promise<Record<(typeof TABLES)[number], number>> {
   const backup = data as Partial<Backup>
   if (backup?.app !== 'olisoap' || !Array.isArray(backup.recipes)) throw new Error('Keine gültige olisoap-Sicherung.')
-  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0, orderItems: 0 }
+  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0, orderItems: 0, settings: 0 }
   await db.transaction('rw', TABLES, async () => {
     for (const t of TABLES) {
       const rows = (backup[t] ?? []) as never[]

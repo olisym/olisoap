@@ -54,7 +54,6 @@ export function BatchList() {
               <span className="font-mono text-sm text-muted">{b.number}</span>
               <span className="font-semibold">{b.recipe.name}</span>
               <StatusBadge batch={b} />
-              {b.recipient && <span className="chip">für {b.recipient}</span>}
               <span className="ml-auto text-sm text-muted tabular-nums">
                 {de(b.date)} · {barsLeft(b)}/{b.bars} Stk · {b.bars > 0 ? `${fmt(b.cost / b.bars, 2)} €/Stk` : ''}
               </span>
@@ -127,10 +126,6 @@ export function BatchDetail() {
           <label className="label">
             Siededatum
             <input type="date" className="field" value={batch.date} onChange={(e) => e.target.value && update({ date: e.target.value })} />
-          </label>
-          <label className="label">
-            Für
-            <input className="field" placeholder="z. B. Christoph, selbst" value={batch.recipient ?? ''} onChange={(e) => update({ recipient: e.target.value || undefined })} />
           </label>
           <label className="label">
             Reifezeit
