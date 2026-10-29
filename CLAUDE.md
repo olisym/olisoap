@@ -41,6 +41,11 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
   `httpdocs/olisoap-config.php` (nicht im Repo). Diagnose: `api/index.php?a=health`.
 - Keine `.htaccess` mit `Require`/`RewriteRule` im `api`-Ordner (führte zu HTTP 500).
 - Service Worker darf `/api/` nicht auf `index.html` umleiten (`navigateFallbackDenylist`).
+- Sync-API: Datensatz-Kennungen **≤ 100 Zeichen**, Datensätze ≤ 4 MB verschlüsselt. Feste Kennungen (z. B. aus Importen)
+  hashen statt Namen einbauen. Vorlagen haben feste Kennungen (`vorlage-…`), doppelte unveränderte Rezepte räumt
+  `removeDuplicateRecipes` nach jedem Abgleich auf.
+- Sync-Seite zeigt „App-Version <hash>“ = „Build <hash>“ im Branch `deploy`/Plesk. Plesk zieht ggf. verzögert
+  („Jetzt abrufen“).
 
 ## Arbeitsweise
 
