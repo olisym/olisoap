@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { purchaseId } from './salandia'
 import { importSalandiaCatalog, shopCategoryOf } from './salandiaCatalog'
 
 describe('Salandia-Katalog', () => {
@@ -24,5 +25,15 @@ describe('Salandia-Katalog', () => {
     )
     expect(products).toHaveLength(0)
     expect(updates[0].changes.shopCategory).toBe('Pflanzenöl')
+  })
+})
+
+describe('Salandia-Bestellungen', () => {
+  it('hält Einkaufs-Kennungen kurz und stabil', () => {
+    const key = `name:${'sala pfefferminzöl naturrein ätherisch '.repeat(4)}`
+    const id = purchaseId('45958', key)
+    expect(id.length).toBeLessThanOrEqual(100)
+    expect(id).toBe(purchaseId(45958, key))
+    expect(id).not.toBe(purchaseId('45958', 'name:anderes'))
   })
 })

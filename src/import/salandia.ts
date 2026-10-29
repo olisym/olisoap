@@ -1,3 +1,4 @@
+import { hashString } from '../sync/crypto'
 import type { Product, ProductUnit, Purchase } from '../core/inventory'
 
 // Import der Bestellübersicht von salandia.de (JSON-Export aus dem Kundenkonto).
@@ -112,6 +113,14 @@ export function productKey(p: { sku?: string | null; name: string }): string {
   return sku ? `sku:${sku}` : `name:${p.name.toLowerCase().trim()}`
 }
 
+/**
+ * Feste Kennung eines Einkaufs, damit erneutes Einlesen nichts verdoppelt. Der Artikelschlüssel wird gehasht,
+ * weil lange Artikelnamen sonst die Grenze der Sync-API (100 Zeichen) sprengen.
+ */
+export function purchaseId(orderNumber: string | number, key: string): string {
+  return `salandia:${orderNumber}:${hashString(key)}`
+}
+
 export interface ImportResult {
   products: Product[]
   purchases: Purchase[]
@@ -148,7 +157,7 @@ export function importSalandia(data: unknown, existing: Product[], existingPurch
         byKey.set(key, product)
         newProducts.push(product)
       }
-      const id = `salandia:${order.order_number}:${key}`
+      const id = purchaseId(order.order_number, key)
       if (purchaseIds.has(id)) continue
       purchaseIds.add(id)
       purchases.push({
