@@ -1,6 +1,6 @@
 import { Calculator, Copy, ExternalLink, Minus, PackageCheck, Plus, ShoppingCart, Truck, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
 import { EmptyState, PageHeader, Panel } from '../components/ui'
 import { needsOf } from '../core/batch'
@@ -71,12 +71,18 @@ export function Shopping() {
   }
 
   function copyList() {
-    const text = open
-      .map((o) => {
-        const p = byId.get(o.productId)
-        return `${o.packages}× ${p?.name ?? '?'}${p?.sku ? ` (${p.sku})` : ''}${p?.url ? `\n   ${p.url}` : ''}`
-      })
-      .join('\n')
+    const text = bySupplier(open, byId)
+      .map(
+        ([supplier, items]) =>
+          `${supplier}\n` +
+          items
+            .map((o) => {
+              const p = byId.get(o.productId)
+              return `${o.packages}× ${p?.name ?? '?'}${p?.sku ? ` (${p.sku})` : ''}${p?.url ? `\n   ${p.url}` : ''}`
+            })
+            .join('\n'),
+      )
+      .join('\n\n')
     navigator.clipboard?.writeText(text)
   }
 
@@ -176,11 +182,21 @@ export function Shopping() {
             </EmptyState>
           ) : (
             <>
-              <ul className="space-y-2">
-                {open.map((o) => (
-                  <OpenItem key={o.id} item={o} product={byId.get(o.productId)} />
+              <div className="space-y-4">
+                {bySupplier(open, byId).map(([supplier, items]) => (
+                  <section key={supplier} aria-label={supplier}>
+                    <h3 className="eyebrow mb-2 flex justify-between">
+                      <span>{supplier}</span>
+                      <span className="tabular-nums">{fmt(items.reduce((sum, o) => sum + (o.unitPrice ?? 0) * o.packages, 0), 2)} €</span>
+                    </h3>
+                    <ul className="space-y-2">
+                      {items.map((o) => (
+                        <OpenItem key={o.id} item={o} product={byId.get(o.productId)} />
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </ul>
+              </div>
               <div className="mt-4 flex flex-wrap justify-end gap-2">
                 <button className="btn" onClick={copyList}>
                   <Copy size={18} /> Liste kopieren
@@ -229,14 +245,24 @@ export function Shopping() {
   )
 }
 
+/** Offene Posten nach Shop gruppiert, Shops mit Links (Versand) zuerst, Supermarkt zuletzt. */
+function bySupplier(items: OrderItem[], byId: Map<string, Product>): [string, OrderItem[]][] {
+  const groups = new Map<string, OrderItem[]>()
+  for (const o of items) {
+    const supplier = byId.get(o.productId)?.supplier ?? 'Sonstige'
+    groups.set(supplier, [...(groups.get(supplier) ?? []), o])
+  }
+  return [...groups].sort(([a], [b]) => Number(a === SUPERMARKET) - Number(b === SUPERMARKET) || a.localeCompare(b, 'de'))
+}
+
+const SUPERMARKET = 'Supermarkt'
+
 function OpenItem({ item, product }: { item: OrderItem; product?: Product }) {
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-2 p-3">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{product?.name ?? 'Artikel gelöscht'}</p>
-        <p className="truncate text-xs text-muted">
-          {product?.supplier ?? ''} {product?.sku ?? ''} {item.reason && `· für ${item.reason}`}
-        </p>
+        <p className="font-medium break-words">{product?.name ?? 'Artikel gelöscht'}</p>
+        <p className="truncate text-xs text-muted">{[product?.sku, item.reason && `für ${item.reason}`].filter(Boolean).join(' · ')}</p>
       </div>
       <div className="flex items-center">
         <button className="btn-ghost min-w-11 px-0" aria-label="Weniger" onClick={() => (item.packages > 1 ? db.orderItems.update(item.id, { packages: item.packages - 1 }) : db.orderItems.delete(item.id))}>
@@ -358,15 +384,24 @@ function AssignProduct({ need, products }: { need: Need; products: Product[] }) 
         .slice(0, 8)
     : []
 
+  /** Artikel „Supermarkt“ anlegen: Literflasche bei Ölen, sonst 1 kg. Den Preis gibt es beim Wareneingang. */
+  function buyLocally() {
+    const [kind] = need.key.split(':')
+    const product: Product = { id: crypto.randomUUID(), name: need.name, supplier: SUPERMARKET, category: 'other', unit: kind === 'fat' ? 'ml' : 'g', packageSize: 1000 }
+    return db.products.add({ ...product, ...materialPatch(product) })
+  }
+
   function assign(p: Product) {
+    return db.products.update(p.id, materialPatch(p))
+  }
+
+  function materialPatch(p: Product): Partial<Product> {
     const [kind, id] = need.key.split(':')
-    const patch: Partial<Product> =
-      kind === 'fat'
-        ? { category: 'fat', fatId: id, additiveId: undefined, lyeType: undefined }
-        : kind === 'lye'
-          ? { category: 'lye', lyeType: id as Product['lyeType'], fatId: undefined, additiveId: undefined }
-          : { category: p.category === 'essentialOil' ? 'essentialOil' : 'additive', additiveId: id, fatId: undefined, lyeType: undefined }
-    return db.products.update(p.id, patch)
+    return kind === 'fat'
+      ? { category: 'fat', fatId: id, additiveId: undefined, lyeType: undefined }
+      : kind === 'lye'
+        ? { category: 'lye', lyeType: id as Product['lyeType'], fatId: undefined, additiveId: undefined }
+        : { category: p.category === 'essentialOil' ? 'essentialOil' : 'additive', additiveId: id, fatId: undefined, lyeType: undefined }
   }
 
   return (
@@ -381,7 +416,10 @@ function AssignProduct({ need, products }: { need: Need; products: Product[] }) 
             {materialKey(p) && <span className="shrink-0 text-xs text-muted">bisher anders zugeordnet</span>}
           </button>
         ))}
-        {words.length > 0 && matches.length === 0 && <p className="text-muted">Nichts im Katalog. <Link className="text-accent hover:underline" to="/lager/artikel">Artikel selbst anlegen</Link></p>}
+        {words.length > 0 && matches.length === 0 && <p className="text-muted">Nichts im Katalog.</p>}
+        <button className="btn w-full justify-start" onClick={buyLocally}>
+          <ShoppingCart size={16} /> Kaufe ich im Supermarkt
+        </button>
       </div>
     </details>
   )
