@@ -6,6 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 // BASE_PATH wird beim Deployment gesetzt (GitHub Pages: /olisoap/, eigene Subdomain: /).
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
+  // Kurzer Commit-Hash, steht auf der Sync-Seite; entspricht „Build …“ im Branch deploy bzw. in Plesk.
+  define: { __BUILD__: JSON.stringify((process.env.GITHUB_SHA ?? 'lokal').slice(0, 7)) },
   plugins: [
     react(),
     tailwindcss(),

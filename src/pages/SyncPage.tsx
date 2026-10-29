@@ -162,6 +162,7 @@ export function SyncPage() {
           </div>
         </Panel>
       )}
+      <p className="text-xs text-muted">App-Version {__BUILD__}</p>
     </div>
   )
 }
