@@ -155,7 +155,7 @@ export function RecipeList() {
             </div>
             <div>
               <p className="mb-2 font-medium">Leere Grundseife</p>
-              <p className="mb-3 text-sm text-muted">Von null an, mit Live-Kennzahlen und Zielprofil.</p>
+              <p className="mb-3 text-sm text-muted">Von null an, mit Live-Kennzahlen und Gegenprobe.</p>
               <button className="btn justify-start" onClick={create}>
                 <Plus size={16} /> Neue Grundseife
               </button>

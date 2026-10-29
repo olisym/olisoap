@@ -15,6 +15,7 @@ import { FATS } from '../data/fats'
 import { PROFILES, PROFILES_BY_ID } from '../data/profiles'
 import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
+import { LabelText } from '../components/ui'
 
 const WATER_LABELS: Record<WaterMode['mode'], string> = {
   percentOfFats: 'Wasser in % der Fette',
@@ -80,7 +81,7 @@ export function RecipeEditor() {
     <section className="space-y-6">
       <header className="flex flex-wrap items-center gap-3">
         <input
-          className="field min-w-0 flex-1 text-xl font-semibold"
+          className="field w-full min-w-0 text-xl font-semibold sm:w-auto sm:min-w-64 sm:flex-1"
           value={draft.name}
           aria-label="Rezeptname"
           onChange={(e) => set({ name: e.target.value })}
@@ -116,9 +117,9 @@ export function RecipeEditor() {
         <div className="space-y-6">
           <div className="card grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label className="label">
-              Zielprofil
+              <LabelText hint="Wofür die Seife gedacht ist. Bestimmt, welche Bereiche bei den Kennzahlen grün sind und worauf die Gegenprobe achtet.">Seifenart</LabelText>
               <select className="field" value={draft.profileId ?? ''} onChange={(e) => set({ profileId: e.target.value || undefined })}>
-                <option value="">– keins –</option>
+                <option value="">– ohne –</option>
                 {PROFILES.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -127,28 +128,28 @@ export function RecipeEditor() {
               </select>
             </label>
             <label className="label">
-              Gehört zu
+              <LabelText hint="Eine Variante ist eine Abwandlung einer Grundseife, z. B. mit Duft oder günstigeren Fetten. Die App zeigt dann die Unterschiede.">Variante von</LabelText>
               <select className="field" value={draft.baseId ?? ''} onChange={(e) => set({ baseId: e.target.value || undefined })}>
-                <option value="">– ist selbst eine Grundseife –</option>
+                <option value="">– keine, ist eine Grundseife –</option>
                 {(bases ?? [])
                   .filter((r) => r.id !== draft.id)
                   .map((r) => (
                     <option key={r.id} value={r.id}>
-                      Variante von {r.name}
+                      {r.name}
                     </option>
                   ))}
               </select>
             </label>
             <label className="label">
-              Gesamtfettmenge
+              <LabelText hint="Summe aller Fette und Öle. Lauge, Wasser und Zusätze rechnet die App daraus.">Fette gesamt</LabelText>
               <NumberField value={input.totalFat} digits={0} suffix="g" onChange={(v) => setInput({ totalFat: v ?? 0 })} />
             </label>
             <label className="label">
-              Überfettung
+              <LabelText hint="Anteil der Fette, der absichtlich unverseift bleibt: Puffer gegen Wiegefehler, milder auf der Haut. Üblich 5–8 %, Haarseife eher 3–5 %.">Überfettung</LabelText>
               <NumberField value={input.superfat} digits={1} suffix="%" onChange={(v) => setInput({ superfat: v ?? 0 })} />
             </label>
             <label className="label">
-              Lauge
+              <LabelText hint="NaOH ergibt feste Seife, KOH weiche bzw. flüssige. Eine Mischung macht Rasierseife cremig und streichfähig.">Lauge</LabelText>
               <select
                 className="field"
                 value={input.lyeType}
@@ -167,13 +168,15 @@ export function RecipeEditor() {
               </select>
             </label>
             <label className="label">
-              Reinheit {input.lyeType === 'dual' ? 'NaOH' : 'der Lauge'}
+              <LabelText hint="Steht auf der Verpackung. NaOH meist 99–100 %, KOH oft um 90 %. Die App wiegt entsprechend mehr ein.">
+                Reinheit {input.lyeType === 'dual' ? 'NaOH' : 'der Lauge'}
+              </LabelText>
               <NumberField value={input.lyePurity} digits={1} suffix="%" onChange={(v) => setInput({ lyePurity: v || 100 })} />
             </label>
             {input.lyeType === 'dual' && (
               <>
-                <label className="label" title="Anteil der Fette, die mit KOH verseift werden">
-                  KOH-Anteil
+                <label className="label">
+                  <LabelText hint="Anteil der Fette, der mit KOH verseift wird. Mehr KOH macht die Seife weicher und den Schaum cremiger.">KOH-Anteil</LabelText>
                   <NumberField value={input.kohShare} digits={0} suffix="%" onChange={(v) => setInput({ kohShare: v ?? 0 })} />
                 </label>
                 <label className="label">
@@ -183,20 +186,22 @@ export function RecipeEditor() {
               </>
             )}
             <label className="label">
-              <select
-                className="field-inline"
-                value={input.water.mode}
-                onChange={(e) => {
-                  const mode = e.target.value as WaterMode['mode']
-                  setInput({ water: { mode, value: mode === 'ratio' ? 2 : mode === 'concentration' ? 33 : 30 } })
-                }}
-              >
-                {Object.entries(WATER_LABELS).map(([k, l]) => (
-                  <option key={k} value={k}>
-                    {l}
-                  </option>
-                ))}
-              </select>
+              <LabelText hint="Wie viel Wasser zur Lauge kommt. Üblich sind 30–35 % Laugenkonzentration. Weniger Wasser: schneller fest, weniger Zeit zum Arbeiten.">
+                <select
+                  className="field-inline"
+                  value={input.water.mode}
+                  onChange={(e) => {
+                    const mode = e.target.value as WaterMode['mode']
+                    setInput({ water: { mode, value: mode === 'ratio' ? 2 : mode === 'concentration' ? 33 : 30 } })
+                  }}
+                >
+                  {Object.entries(WATER_LABELS).map(([k, l]) => (
+                    <option key={k} value={k}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </LabelText>
               <NumberField
                 value={input.water.value}
                 digits={2}
@@ -255,7 +260,7 @@ export function RecipeEditor() {
                 <h2 className="mb-3 font-semibold">Kennzahlen</h2>
                 <PropertyBars properties={result.properties} profile={profile} />
                 <p className="mt-3 text-xs text-muted">
-                  Heuristik nach SoapCalc-Konvention, gut zum Vergleichen von Rezepten. Grüne Bereiche: Zielprofil.
+                  Heuristik nach SoapCalc-Konvention, gut zum Vergleichen von Rezepten. Grüne Bereiche: passend zur Seifenart.
                 </p>
               </div>
               {base && <VariantDiff variant={draft} base={base} />}
@@ -290,8 +295,8 @@ function FatTable({ draft, setInput }: TableProps) {
             <th className="pb-2 font-normal">Fett</th>
             <th className="w-24 pb-2 font-normal">Anteil</th>
             <th className="w-28 pb-2 font-normal">Menge</th>
-            <th className="w-28 pb-2 font-normal" title="Verseifungszahl in mg KOH/g. Leer = Tabellenwert.">
-              VZ (KOH)
+            <th className="w-28 pb-2 font-normal">
+              <LabelText hint="Verseifungszahl: mg KOH je g Fett, aus der Fettdatenbank. Nur ändern, wenn das Analysezertifikat abweicht.">VZ</LabelText>
             </th>
             <th className="w-8" />
           </tr>
