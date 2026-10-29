@@ -168,7 +168,7 @@ async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean, cleaned
     await local.hashes.bulkPut(plan.apply.filter((c) => !c.deleted).map((c) => ({ key: c.key, hash: c.hash! })))
     await local.hashes.bulkDelete(plan.apply.filter((c) => c.deleted).map((c) => c.key))
 
-    // Eigene Änderungen verschlüsselt hochladen, in Paketen. Zu große Datensätze (Server-Grenze 4 MB) werden
+    // Eigene Änderungen verschlüsselt hochladen, in Paketen. Zu große Datensätze (Server-Grenze 4 MB, Kennung 100 Zeichen) werden
     // ausgelassen und gemeldet, statt den ganzen Abgleich zu blockieren.
     let maxSeq = seq
     const tooBig: string[] = []
@@ -180,8 +180,12 @@ async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean, cleaned
           return { tbl, id: rest.join('/'), deleted: p.deleted, data: p.deleted ? undefined : await encryptJson(acc.key, p.value) }
         }),
       )
-      const ok = encrypted.map((r) => (r.data?.length ?? 0) <= MAX_RECORD)
-      encrypted.forEach((r, j) => !ok[j] && tooBig.push(`${TABLE_NAMES[r.tbl] ?? r.tbl} „${r.id}“ (${((r.data?.length ?? 0) / 1e6).toFixed(1)} MB)`))
+      const ok = encrypted.map((r) => (r.data?.length ?? 0) <= MAX_RECORD && r.id.length <= 100)
+      encrypted.forEach(
+        (r, j) =>
+          !ok[j] &&
+          tooBig.push(`${TABLE_NAMES[r.tbl] ?? r.tbl} „${r.id.slice(0, 40)}“ (${r.id.length > 100 ? 'Kennung zu lang' : `${((r.data?.length ?? 0) / 1e6).toFixed(1)} MB`})`),
+      )
       chunk = chunk.filter((_, j) => ok[j])
       const records = encrypted.filter((_, j) => ok[j])
       if (!records.length) continue
@@ -198,7 +202,7 @@ async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean, cleaned
     setStatus({
       phase: tooBig.length ? 'error' : 'idle',
       lastSync,
-      message: tooBig.length ? `Zu groß, nicht abgeglichen: ${tooBig.join(', ')}` : undefined,
+      message: tooBig.length ? `Nicht abgeglichen: ${tooBig.join(', ')}` : undefined,
       conflicts: plan.conflicts || undefined,
     })
   } catch (e) {

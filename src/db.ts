@@ -6,6 +6,7 @@ import { packageGrams, pricePerKg, type Inventory, type Lot, type Product, type 
 import type { RecipeInput } from './core/types'
 import { TEMPLATES, type TemplateFamily } from './data/templates'
 import { findDuplicateRecipes } from './core/dedupe'
+import { purchaseId } from './import/salandia'
 
 export interface Recipe {
   id: string
@@ -169,6 +170,21 @@ db.version(5).stores({
   orderItems: 'id, productId, status',
   settings: 'key',
 })
+
+// Einkäufe aus dem Salandia-Import hatten den ganzen Artikelnamen in der Kennung (zu lang für die Sync-API).
+db.version(6)
+  .stores({})
+  .upgrade(async (tx) => {
+    const purchases = tx.table<Purchase, string>('purchases')
+    const old = await purchases.filter((p) => /^salandia:[^:]+:(sku|name):/.test(p.id)).toArray()
+    await purchases.bulkDelete(old.map((p) => p.id))
+    await purchases.bulkPut(
+      old.map((p) => {
+        const [, order, ...key] = p.id.split(':')
+        return { ...p, id: purchaseId(order, key.join(':')) }
+      }),
+    )
+  })
 
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
