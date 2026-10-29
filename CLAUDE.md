@@ -56,6 +56,10 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
 
 - Cremes/Emulsionen-Kern (Aftershave-Balsam als erstes Produkt), dann wasserfreie Produkte (Balsam, Bartwachs, Massageöl,
   Deo), Tinkturen (Myrrhe, Weihrauch). Haltbarkeit fertiger Produkte, „Retten“ ablaufender Zutaten.
-- Rezepte: Olivenöl, Sonnenblumenöl HO, Stearinsäure und Kaolin gibt es nicht bei Salandia → Artikel manuell oder Rezepte anpassen.
+- Olivenöl, Sonnenblumenöl HO u. Ä. kauft der Nutzer im Supermarkt (Einkauf: „Kaufe ich im Supermarkt“, Liste nach Shop
+  gruppiert). Salandia bleibt Hauptshop für Spezialitäten; App bleibt shopunabhängig (weitere Importe möglich).
+- Später, falls die App für andere geöffnet wird: Affiliate/Warenkorb-Übergabe denkbar (gekennzeichnet, Vorschläge
+  dürfen dadurch nicht verbogen werden). Kein Hauptziel. Hauptziel: eigenes Sieden optimieren, Verluste durch Ranzigwerden
+  vermeiden; Einsteigern helfen ist willkommen.
 - Ätherische Öle: Dosierung, Allergene (Deklaration ab 0,01 % in Rinse-off).
 - Reste-Optimierer („Entwickeln“), Mindestbestände, Barcode.
