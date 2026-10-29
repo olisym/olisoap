@@ -17,6 +17,19 @@ const SYNCED: Record<string, string> = {
   settings: 'key',
 }
 
+/** Obergrenze je verschlüsseltem Datensatz, knapp unter der Grenze der Sync-API (4 MB). */
+const MAX_RECORD = 3_900_000
+
+const TABLE_NAMES: Record<string, string> = {
+  recipes: 'Rezept',
+  products: 'Artikel',
+  purchases: 'Einkauf',
+  lots: 'Gebinde',
+  batches: 'Charge',
+  orderItems: 'Bestellposten',
+  settings: 'Einstellung',
+}
+
 interface Account {
   id: 'account'
   server: string
@@ -155,16 +168,23 @@ async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean, cleaned
     await local.hashes.bulkPut(plan.apply.filter((c) => !c.deleted).map((c) => ({ key: c.key, hash: c.hash! })))
     await local.hashes.bulkDelete(plan.apply.filter((c) => c.deleted).map((c) => c.key))
 
-    // Eigene Änderungen verschlüsselt hochladen, in Paketen.
+    // Eigene Änderungen verschlüsselt hochladen, in Paketen. Zu große Datensätze (Server-Grenze 4 MB) werden
+    // ausgelassen und gemeldet, statt den ganzen Abgleich zu blockieren.
     let maxSeq = seq
+    const tooBig: string[] = []
     for (let i = 0; i < plan.push.length; i += 200) {
-      const chunk = plan.push.slice(i, i + 200)
-      const records = await Promise.all(
+      let chunk = plan.push.slice(i, i + 200)
+      const encrypted = await Promise.all(
         chunk.map(async (p) => {
           const [tbl, ...rest] = p.key.split('/')
           return { tbl, id: rest.join('/'), deleted: p.deleted, data: p.deleted ? undefined : await encryptJson(acc.key, p.value) }
         }),
       )
+      const ok = encrypted.map((r) => (r.data?.length ?? 0) <= MAX_RECORD)
+      encrypted.forEach((r, j) => !ok[j] && tooBig.push(`${TABLE_NAMES[r.tbl] ?? r.tbl} „${r.id}“ (${((r.data?.length ?? 0) / 1e6).toFixed(1)} MB)`))
+      chunk = chunk.filter((_, j) => ok[j])
+      const records = encrypted.filter((_, j) => ok[j])
+      if (!records.length) continue
       const res = await call<{ seqs: number[] }>(acc.server, 'push', { records }, acc.token)
       maxSeq = Math.max(maxSeq, ...res.seqs)
       await local.hashes.bulkPut(chunk.filter((p) => !p.deleted).map((p) => ({ key: p.key, hash: p.hash! })))
@@ -175,7 +195,12 @@ async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean, cleaned
     await local.state.update('account', { lastSeq: maxSeq, lastSync })
     // Erst mit vollständigem Stand aufräumen (Grundseifen von zwei Geräten), dann die Löschungen gleich hochladen.
     if (!cleaned && (await removeDuplicateRecipes()) > 0) return doSync('normal', retried, true)
-    setStatus({ phase: 'idle', lastSync, message: undefined, conflicts: plan.conflicts || undefined })
+    setStatus({
+      phase: tooBig.length ? 'error' : 'idle',
+      lastSync,
+      message: tooBig.length ? `Zu groß, nicht abgeglichen: ${tooBig.join(', ')}` : undefined,
+      conflicts: plan.conflicts || undefined,
+    })
   } catch (e) {
     if (e instanceof HttpError && e.status === 401 && !retried) {
       // Sitzung abgelaufen: mit dem gespeicherten Anmeldewert still neu anmelden.

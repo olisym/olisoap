@@ -62,7 +62,7 @@ function useDesign(): [LabelDesign, (patch: Partial<LabelDesign>) => void] {
   return [design, (patch) => db.settings.put({ key: DESIGN_KEY, value: { ...design, ...patch } })]
 }
 
-/** Logo verkleinern (max. 600 px), damit die Datenbank klein bleibt. SVG bleibt unverändert. */
+/** Logo verkleinern (max. 600 px), damit die Datenbank klein bleibt. Kleine SVG bleiben Vektor, große (oft mit eingebettetem Foto) werden Bild. */
 async function readLogo(file: File): Promise<string> {
   const url = await new Promise<string>((res, rej) => {
     const r = new FileReader()
@@ -70,17 +70,20 @@ async function readLogo(file: File): Promise<string> {
     r.onerror = rej
     r.readAsDataURL(file)
   })
-  if (file.type === 'image/svg+xml') return url
+  if (file.type === 'image/svg+xml' && file.size < 100_000) return url
   const img = new Image()
   await new Promise((res, rej) => {
     img.onload = res
     img.onerror = rej
     img.src = url
   })
-  const scale = Math.min(1, 600 / Math.max(img.width, img.height))
+  // SVG ohne Größenangabe meldet 0 × 0: dann quadratisch annehmen.
+  const w = img.naturalWidth || 600
+  const h = img.naturalHeight || 600
+  const scale = Math.min(1, 600 / Math.max(w, h))
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(img.width * scale)
-  canvas.height = Math.round(img.height * scale)
+  canvas.width = Math.round(w * scale)
+  canvas.height = Math.round(h * scale)
   canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
   return canvas.toDataURL('image/png')
 }

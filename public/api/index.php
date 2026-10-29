@@ -234,9 +234,16 @@ switch ($action) {
             $id = (string) ($r['id'] ?? '');
             $deleted = !empty($r['deleted']);
             $data = $deleted ? null : (string) ($r['data'] ?? '');
-            if (!preg_match('/^[a-zA-Z]{1,40}$/', $tbl) || $id === '' || strlen($id) > 100 || (!$deleted && strlen($data) > 4_000_000)) {
+            $problem = match (true) {
+                !preg_match('/^[a-zA-Z]{1,40}$/', $tbl) => 'Tabellenname ungültig',
+                $id === '' => 'Kennung fehlt',
+                strlen($id) > 100 => 'Kennung länger als 100 Zeichen',
+                !$deleted && strlen($data) > 4_000_000 => 'größer als 4 MB (' . round(strlen($data) / 1e6, 1) . ' MB)',
+                default => '',
+            };
+            if ($problem !== '') {
                 $db->rollBack();
-                fail(400, 'Ungültiger Datensatz');
+                fail(400, "Ungültiger Datensatz $tbl/" . substr($id, 0, 40) . ": $problem");
             }
             $seq = nextSeq($db, $p, $mysql);
             $st->execute([$uid, $tbl, $id, $seq, $deleted ? 1 : 0, $data]);
