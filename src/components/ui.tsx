@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 // Kleine, wiederverwendbare Bausteine für ein einheitliches Erscheinungsbild.
@@ -119,5 +119,41 @@ export function EmptyState({ icon: Icon, title, children, action }: { icon: Luci
       {children && <p className="max-w-md text-sm text-muted">{children}</p>}
       {action}
     </div>
+  )
+}
+
+/**
+ * Feldname mit optionaler Kurzhilfe: „?“ klappt einen Satz direkt unter dem Namen auf.
+ * Sichtbar klein, Trefferfläche 44 px. Gehört in ein <label>, der Hilfetext bleibt dort lesbar, wo die Frage entsteht.
+ */
+export function LabelText({ children, hint }: { children: ReactNode; hint?: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  return (
+    <>
+      <span className="flex items-center gap-1.5">
+        {children}
+        {hint && (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={id}
+            aria-label="Was bedeutet das?"
+            className={`relative inline-grid size-5 place-items-center rounded-full border text-[11px] leading-none font-semibold before:absolute before:-inset-3 ${open ? 'border-accent bg-accent text-accent-ink' : 'border-line text-muted hover:border-accent hover:text-accent'}`}
+            onClick={(e) => {
+              e.preventDefault()
+              setOpen(!open)
+            }}
+          >
+            ?
+          </button>
+        )}
+      </span>
+      {hint && open && (
+        <span id={id} role="note" className="block text-xs leading-snug font-normal text-muted">
+          {hint}
+        </span>
+      )}
+    </>
   )
 }
