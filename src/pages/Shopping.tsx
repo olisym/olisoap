@@ -6,7 +6,8 @@ import { EmptyState, PageHeader, Panel } from '../components/ui'
 import { needsOf } from '../core/batch'
 import { calculate } from '../core/calc'
 import { CATEGORY_LABELS, materialKey, offerPrice, packageGrams, type Product } from '../core/inventory'
-import { planShopping, type ShoppingSuggestion } from '../core/shopping'
+import { planShopping, type ShoppingMode, type ShoppingSuggestion } from '../core/shopping'
+import type { Need } from '../core/batch'
 import { db, receiveOrderItem, type OrderItem } from '../db'
 import { fmt } from '../format'
 import { de, groupRecipes, useWorkshop } from '../hooks'
@@ -14,6 +15,11 @@ import { de, groupRecipes, useWorkshop } from '../hooks'
 export function Shopping() {
   const w = useWorkshop()
   const [params] = useSearchParams()
+  const [mode, setModeState] = useState<ShoppingMode>(() => (readPref('shoppingMode') === 'total' ? 'total' : 'perKg'))
+  const setMode = (m: ShoppingMode) => {
+    setModeState(m)
+    writePref('shoppingMode', m)
+  }
   const [plan, setPlan] = useState<Record<string, number>>(() => {
     const id = params.get('rezept')
     return id ? { [id]: Number(params.get('faktor')) || 1 } : {}
@@ -44,7 +50,8 @@ export function Shopping() {
       }),
     ],
   }
-  const suggestions = planShopping(pendingInv, needs)
+  const suggestions = planShopping(pendingInv, needs, mode)
+  const totalOf = (m: ShoppingMode) => planShopping(pendingInv, needs, m).reduce((sum, x) => sum + (x.total ?? 0), 0)
 
   const open = orderItems.filter((o) => o.status === 'open')
   const ordered = orderItems.filter((o) => o.status === 'ordered')
@@ -55,12 +62,12 @@ export function Shopping() {
     const now = new Date().toISOString()
     const reason = w!.recipes.filter((r) => plan[r.id]).map((r) => `${r.name} ×${plan[r.id]}`).join(', ')
     await db.orderItems.bulkAdd(
-      list
-        .filter((s) => s.product && s.packages > 0)
-        .map((s) => ({ id: crypto.randomUUID(), productId: s.product!.id, packages: s.packages, unitPrice: s.unitPrice, reason, status: 'open' as const, createdAt: now })),
+      list.flatMap((s) =>
+        s.lines.map((l) => ({ id: crypto.randomUUID(), productId: l.product.id, packages: l.packages, unitPrice: l.unitPrice, reason, status: 'open' as const, createdAt: now })),
+      ),
     )
     // Bedarf ohne bekannten Artikel bleibt stehen, damit er nicht verloren geht.
-    if (list.every((s) => s.product)) setPlan({})
+    if (list.every((s) => s.lines.length)) setPlan({})
   }
 
   function copyList() {
@@ -78,7 +85,7 @@ export function Shopping() {
       <PageHeader eyebrow="Einkauf" title="Was muss bestellt werden?" />
 
       <Panel title="Bedarf berechnen" icon={Calculator}>
-        <p className="mb-4 text-sm text-muted">Wie oft willst du was sieden? Die App zieht Vorrat und offene Bestellungen ab und schlägt die günstigste Packung vor.</p>
+        <p className="mb-4 text-sm text-muted">Wie oft willst du was sieden? Die App zieht Vorrat und offene Bestellungen ab und schlägt Packungen vor.</p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {groupRecipes(w.recipes).flatMap(({ base, variants }) =>
             [base, ...variants].map((r) => {
@@ -106,6 +113,23 @@ export function Shopping() {
               </p>
             ) : (
               <>
+                <div className="mb-3 inline-flex flex-wrap gap-1 rounded-xl bg-surface-2 p-1" role="group" aria-label="Packungen wählen nach">
+                  {(
+                    [
+                      ['perKg', 'Bester Preis pro kg'],
+                      ['total', 'Nur was gebraucht wird'],
+                    ] as const
+                  ).map(([m, label]) => (
+                    <button
+                      key={m}
+                      aria-pressed={mode === m}
+                      className={`min-h-10 rounded-lg px-3 text-sm font-medium ${mode === m ? 'bg-surface text-accent shadow-sm' : 'text-muted hover:text-ink'}`}
+                      onClick={() => setMode(m)}
+                    >
+                      {label} · {fmt(totalOf(m), 2)} €
+                    </button>
+                  ))}
+                </div>
                 <ul className="divide-y divide-line">
                   {suggestions.map((s) => (
                     <li key={s.need.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
@@ -113,21 +137,24 @@ export function Shopping() {
                         <span className="font-medium">{s.need.name}</span>
                         <span className="ml-2 text-sm text-muted">fehlt {fmt(s.shortfall)} g</span>
                       </span>
-                      {s.product ? (
-                        <span className="text-sm text-muted">
-                          {s.packages}× {s.product.name}
+                      {s.lines.length ? (
+                        <span className="text-right text-sm text-muted">
+                          {s.lines.map((l) => (
+                            <span key={l.product.id} className="block">
+                              {l.packages}× {l.product.name}
+                            </span>
+                          ))}
+                          {s.leftover >= 1 && <span className="block text-xs">Rest ca. {fmt(s.leftover)} g</span>}
                         </span>
                       ) : (
-                        <Link className="text-sm text-warn hover:underline" to="/lager/artikel">
-                          Noch kein Artikel, hier anlegen
-                        </Link>
+                        <AssignProduct need={s.need} products={inventory.products} />
                       )}
-                      <span className="w-20 text-right font-semibold tabular-nums">{s.unitPrice !== undefined ? `${fmt(s.unitPrice * s.packages, 2)} €` : '–'}</span>
+                      <span className="w-20 text-right font-semibold tabular-nums">{s.total !== undefined ? `${fmt(s.total, 2)} €` : '–'}</span>
                     </li>
                   ))}
                 </ul>
                 <div className="mt-4 flex justify-end">
-                  <button className="btn-primary" disabled={!suggestions.some((s) => s.product && s.packages > 0)} onClick={() => addSuggestions(suggestions)}>
+                  <button className="btn-primary" disabled={!suggestions.some((s) => s.lines.length)} onClick={() => addSuggestions(suggestions)}>
                     <ShoppingCart size={18} /> Auf die Einkaufsliste
                   </button>
                 </div>
@@ -294,5 +321,68 @@ function AddManual({ products }: { products: Product[] }) {
       )}
       {words.length > 0 && matches.length === 0 && <p className="text-sm text-muted">Nichts gefunden.</p>}
     </div>
+  )
+}
+
+/** Merker pro Gerät (Browser-Speicher kann fehlen, z. B. im privaten Fenster). */
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // egal, dann eben nicht gemerkt
+  }
+}
+
+/** Fehlt ein Artikel für ein Material, passende aus dem Katalog vorschlagen und mit einem Klick zuordnen. */
+function AssignProduct({ need, products }: { need: Need; products: Product[] }) {
+  // Für ein Fett nur Fette vorschlagen (sonst taucht bei „Oliven“ das Olivenkern-Granulat auf), für ätherische Öle nur ätherische.
+  const fits = (p: Product) =>
+    need.key.startsWith('fat:')
+      ? p.category === 'fat'
+      : need.key.startsWith('lye:')
+        ? p.category === 'lye' || p.category === 'cosmetic'
+        : need.key.startsWith('additive:eo-') === /ätherisch/i.test(p.name) && p.category !== 'fat' && p.category !== 'packaging'
+  const [q, setQ] = useState(() => need.name.split(/[\s(]/)[0].replace(/öl$/i, ''))
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const matches = words.length
+    ? products
+        .filter((p) => words.every((w) => p.name.toLowerCase().includes(w)) && fits(p))
+        .sort((a, b) => Number(!!materialKey(a)) - Number(!!materialKey(b)) || a.name.localeCompare(b.name, 'de'))
+        .slice(0, 8)
+    : []
+
+  function assign(p: Product) {
+    const [kind, id] = need.key.split(':')
+    const patch: Partial<Product> =
+      kind === 'fat'
+        ? { category: 'fat', fatId: id, additiveId: undefined, lyeType: undefined }
+        : kind === 'lye'
+          ? { category: 'lye', lyeType: id as Product['lyeType'], fatId: undefined, additiveId: undefined }
+          : { category: p.category === 'essentialOil' ? 'essentialOil' : 'additive', additiveId: id, fatId: undefined, lyeType: undefined }
+    return db.products.update(p.id, patch)
+  }
+
+  return (
+    <details className="w-full text-sm sm:w-auto">
+      <summary className="cursor-pointer text-warn">Noch kein Artikel zugeordnet</summary>
+      <div className="mt-2 space-y-1 sm:w-96">
+        <input className="field w-full" value={q} onChange={(e) => setQ(e.target.value)} aria-label={`Artikel für ${need.name} suchen`} />
+        {matches.map((p) => (
+          <button key={p.id} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left hover:bg-surface-2" onClick={() => assign(p)}>
+            <Plus size={16} className="shrink-0 text-accent" aria-hidden />
+            <span className="min-w-0 flex-1 truncate">{p.name}</span>
+            {materialKey(p) && <span className="shrink-0 text-xs text-muted">bisher anders zugeordnet</span>}
+          </button>
+        ))}
+        {words.length > 0 && matches.length === 0 && <p className="text-muted">Nichts im Katalog. <Link className="text-accent hover:underline" to="/lager/artikel">Artikel selbst anlegen</Link></p>}
+      </div>
+    </details>
   )
 }
