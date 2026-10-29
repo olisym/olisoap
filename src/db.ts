@@ -5,6 +5,7 @@ import { barCount } from './core/cost'
 import { packageGrams, pricePerKg, type Inventory, type Lot, type Product, type Purchase } from './core/inventory'
 import type { RecipeInput } from './core/types'
 import { TEMPLATES, type TemplateFamily } from './data/templates'
+import { findDuplicateRecipes } from './core/dedupe'
 
 export interface Recipe {
   id: string
@@ -129,10 +130,24 @@ db.version(3).stores({
 })
 
 /** Legt eine Grundseife samt Varianten als Rezepte an. */
+/** Feste Kennung für Vorlagen, damit jedes Gerät dieselben Grundseifen anlegt und der Abgleich sie nicht verdoppelt. */
+const templateId = (name: string) =>
+  'vorlage-' +
+  name
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+/** Fester Zeitstempel für Vorlagen: gleiche Vorlage auf zwei Geräten = gleicher Inhalt, kein Konflikt. */
+const TEMPLATE_DATE = '2026-01-01T00:00:00.000Z'
+
 export function familyRecipes(family: TemplateFamily): Recipe[] {
-  const now = new Date().toISOString()
-  const base: Recipe = { ...structuredClone(family.base), id: crypto.randomUUID(), createdAt: now, updatedAt: now }
-  const variants = family.variants.map((v) => ({ ...structuredClone(v), id: crypto.randomUUID(), baseId: base.id, createdAt: now, updatedAt: now }))
+  const base: Recipe = { ...structuredClone(family.base), id: templateId(family.base.name), createdAt: TEMPLATE_DATE, updatedAt: TEMPLATE_DATE }
+  const variants = family.variants.map((v) => ({ ...structuredClone(v), id: templateId(v.name), baseId: base.id, createdAt: TEMPLATE_DATE, updatedAt: TEMPLATE_DATE }))
   return [base, ...variants]
 }
 
@@ -158,6 +173,22 @@ db.version(5).stores({
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
 })
+
+/**
+ * Entfernt unveränderte doppelte Rezepte und hängt Chargen und Varianten auf die behaltene Fassung um.
+ * Gibt die Zahl der entfernten Rezepte zurück.
+ */
+export async function removeDuplicateRecipes(): Promise<number> {
+  return db.transaction('rw', db.recipes, db.batches, async () => {
+    const batches = await db.batches.toArray()
+    const { remove, replace } = findDuplicateRecipes(await db.recipes.toArray(), batches.map((b) => b.recipeId))
+    if (!remove.length) return 0
+    for (const b of batches) if (replace.has(b.recipeId)) await db.batches.update(b.id, { recipeId: replace.get(b.recipeId)! })
+    for (const r of await db.recipes.toArray()) if (r.baseId && replace.has(r.baseId)) await db.recipes.update(r.id, { baseId: replace.get(r.baseId)! })
+    await db.recipes.bulkDelete(remove)
+    return remove.length
+  })
+}
 
 /** Löscht alle Rezepte und legt die Grundseifen neu an. Chargen bleiben erhalten (sie enthalten eine Kopie ihres Rezepts). */
 export async function resetRecipes(): Promise<void> {

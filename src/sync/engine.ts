@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { db } from '../db'
+import { db, removeDuplicateRecipes } from '../db'
 import { decryptJson, deriveKeys, encryptJson, hashString } from './crypto'
 import { planSync, type LocalRecord, type RemoteChange } from './plan'
 
@@ -126,7 +126,7 @@ export function syncNow(mode: 'normal' | 'replaceLocal' = 'normal'): Promise<voi
   return running
 }
 
-async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean): Promise<void> {
+async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean, cleaned = false): Promise<void> {
   const acc = await local.state.get('account')
   if (!acc) return setStatus({ phase: 'off' })
   if (!navigator.onLine) return setStatus({ phase: 'offline' })
@@ -173,6 +173,8 @@ async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean): Promis
 
     const lastSync = new Date().toISOString()
     await local.state.update('account', { lastSeq: maxSeq, lastSync })
+    // Erst mit vollständigem Stand aufräumen (Grundseifen von zwei Geräten), dann die Löschungen gleich hochladen.
+    if (!cleaned && (await removeDuplicateRecipes()) > 0) return doSync('normal', retried, true)
     setStatus({ phase: 'idle', lastSync, message: undefined, conflicts: plan.conflicts || undefined })
   } catch (e) {
     if (e instanceof HttpError && e.status === 401 && !retried) {
@@ -180,7 +182,7 @@ async function doSync(mode: 'normal' | 'replaceLocal', retried: boolean): Promis
       try {
         const { token } = await call<{ token: string }>(acc.server, 'login', { user: acc.user, auth: acc.auth })
         await local.state.update('account', { token })
-        return doSync(mode, true)
+        return doSync(mode, true, cleaned)
       } catch {
         return setStatus({ phase: 'error', message: 'Anmeldung fehlgeschlagen. Bitte neu anmelden.' })
       }
