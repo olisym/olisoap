@@ -78,7 +78,9 @@ export function RecipeList() {
 
   async function addFamily(i: number) {
     const rs = familyRecipes(TEMPLATES[i])
-    await db.recipes.bulkAdd(rs)
+    // Vorlagen haben feste Kennungen: Vorhandene (evtl. bearbeitete) bleiben, nur Fehlendes kommt dazu.
+    const existing = new Set((await db.recipes.bulkGet(rs.map((r) => r.id))).filter(Boolean).map((r) => r!.id))
+    await db.recipes.bulkAdd(rs.filter((r) => !existing.has(r.id)))
     navigate(`/rezepte/${rs[0].id}`)
   }
 
