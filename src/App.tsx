@@ -4,6 +4,7 @@ import { BatchDetail, BatchList } from './pages/Batches'
 import { Correction } from './pages/Correction'
 import { Dashboard } from './pages/Dashboard'
 import { DataPage } from './pages/DataPage'
+import { Demo } from './pages/Demo'
 import { FatList } from './pages/FatList'
 import { InventoryPage } from './pages/InventoryPage'
 import { Labels } from './pages/Labels'
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/fette" element={<FatList />} />
           <Route path="/daten" element={<DataPage />} />
           <Route path="/sync" element={<SyncPage />} />
+          <Route path="/demo" element={<Demo />} />
         </Routes>
       </AppShell>
     </HashRouter>
