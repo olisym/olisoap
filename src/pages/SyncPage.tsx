@@ -81,7 +81,7 @@ export function SyncPage() {
               <button className="btn w-full justify-start" disabled={busy} onClick={() => firstSync('normal')}>
                 Zusammenführen
               </button>
-              <p className="text-xs text-muted">Behält beides. Auf zwei Geräten angelegte Grundseifen erscheinen dann doppelt.</p>
+              <p className="text-xs text-muted">Behält beides. Unveränderte doppelte Rezepte werden dabei automatisch zusammengeführt.</p>
             </div>
           ) : (
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
