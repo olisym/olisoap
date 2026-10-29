@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { EmptyState } from '../components/ui'
 import { db } from '../db'
 import { importSalandiaCatalog, isCatalog } from '../import/salandiaCatalog'
+import { loadDemoScenario } from '../demo/scenario'
 import { FlaskConical } from 'lucide-react'
 
-// Demo-Link (#/demo): lädt einen Beispiel-Katalog und öffnet den Einkauf mit einer Grundseife.
+// Demo-Link (#/demo): lädt einen Beispiel-Katalog und eine Beispiel-Werkstatt (Vorrat, Chargen, Einkauf) und öffnet die Übersicht.
 // Die Datei demo/katalog.json liegt nur auf dem Server, nicht im Repository (keine gescrapten Kataloge im Repo).
 // Vorhandene Daten werden nie angefasst: Gibt es schon Artikel, wird nichts importiert.
 
@@ -21,8 +22,9 @@ export function Demo() {
           const data = res.ok ? await res.json() : undefined
           if (!isCatalog(data)) throw new Error('Auf diesem Server liegen keine Beispieldaten.')
           await db.products.bulkAdd(importSalandiaCatalog(data, []).products)
+          await loadDemoScenario()
         }
-        navigate('/einkauf?rezept=vorlage-koerperseife&faktor=1', { replace: true })
+        navigate('/', { replace: true })
       } catch (e) {
         setError((e as Error).message)
       }
