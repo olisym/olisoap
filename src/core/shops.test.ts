@@ -81,6 +81,25 @@ describe('Einkauf über mehrere Shops', () => {
     expect(summarizeOrders(s, terms)[0].weightKg).toBeCloseTo(5.75)
   })
 
+  it('Vorlieben: meiden, bevorzugen und Aufwand je weitere Bestellung', () => {
+    const products = [item('a-shea', 'A', 'shea', 500, 10), item('b-shea', 'B', 'shea', 500, 10.5), item('b-cocoa', 'B', 'cocoa', 500, 9), item('a-cocoa', 'A', 'cocoa', 500, 9.4)]
+    const needs = [need('shea', 400), need('cocoa', 400)]
+    const flat: ShopTerms[] = [
+      { name: 'A', shipping: 0 },
+      { name: 'B', shipping: 0 },
+    ]
+    // Ohne Vorliebe: jeweils der günstigere Shop
+    expect(shopOfLines(optimizeShops(inv(products), needs, flat, today))).toEqual({ shea: 'A', cocoa: 'B' })
+    // Aufwand 2 € je weiterer Bestellung: alles bei A (19,40) statt A+B (19 + 2)
+    expect(shopOfLines(optimizeShops(inv(products), needs, flat, today, { extraOrderCost: 2 }))).toEqual({ shea: 'A', cocoa: 'A' })
+    // B bevorzugt: 5 % teurer ist in Ordnung
+    expect(shopOfLines(optimizeShops(inv(products), needs, [flat[0], { ...flat[1], preference: 'prefer' }], today))).toEqual({ shea: 'B', cocoa: 'B' })
+    // B meiden: alles bei A, obwohl Kakao bei B billiger wäre
+    expect(shopOfLines(optimizeShops(inv(products), needs, [flat[0], { ...flat[1], preference: 'avoid' }], today))).toEqual({ shea: 'A', cocoa: 'A' })
+    // Gemieden, aber einzige Quelle: trotzdem dort
+    expect(shopOfLines(optimizeShops(inv([item('b-cocoa', 'B', 'cocoa', 500, 9)]), [need('cocoa', 400)], [{ name: 'B', preference: 'avoid' }], today))).toEqual({ cocoa: 'B' })
+  })
+
   it('berücksichtigt den Mindestbestellwert', () => {
     // B ist für Kakao billiger, hat aber 20 € Mindestbestellwert: 8 + 12 Aufschlag + 4,90.
     const products = [item('a-shea', 'A', 'shea', 500, 10), item('a-cocoa', 'A', 'cocoa', 500, 9.5), item('b-cocoa', 'B', 'cocoa', 500, 3)]

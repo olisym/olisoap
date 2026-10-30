@@ -1,5 +1,5 @@
 import type { Need } from './batch'
-import { optimizeShops, type ShopTerms } from './shops'
+import { optimizeShops, type ShopPreferences, type ShopTerms } from './shops'
 import { bestProduct, materialKey, materialStock, offerPrice, packageGrams, pricePerKg, type Inventory, type MaterialKey, type Product } from './inventory'
 
 export { bestProduct }
@@ -117,14 +117,18 @@ export function planShopping(
   mode: ShoppingMode = 'perKg',
   today = new Date().toISOString().slice(0, 10),
   shops: ShopTerms[] = [],
+  prefs: ShopPreferences = {},
 ): ShoppingSuggestion[] {
   // Nur was gebraucht wird: über alle Shops verteilen, Versand und Gebühren eingerechnet.
-  if (mode === 'total') return optimizeShops(inv, needs, shops, today)
+  if (mode === 'total') return optimizeShops(inv, needs, shops, today, prefs)
+  // Bester kg-Preis: gemiedene Shops außen vor, solange es das Material woanders gibt.
+  const avoid = new Set(shops.filter((t) => t.preference === 'avoid').map((t) => t.name))
+  const allowed = { ...inv, products: inv.products.filter((p) => !avoid.has(p.supplier ?? 'Sonstige')) }
   return mergeNeeds(needs)
     .map((need): ShoppingSuggestion | undefined => {
       const shortfall = need.grams - materialStock(inv, need.key)
       if (shortfall <= 0) return undefined
-      const product = bestProduct(inv, need.key)
+      const product = bestProduct(allowed, need.key) ?? bestProduct(inv, need.key)
       const grams = product && packageGrams(product)
       if (!product || !grams) return { need, shortfall, lines: [], leftover: 0 }
       const unitPrice = offerPrice(inv, product)?.unitPrice

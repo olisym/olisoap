@@ -20,7 +20,18 @@ export interface ShopTerms {
   paymentFee?: number
   /** Laden vor Ort: keine Versandkosten. */
   local?: boolean
+  /** Persönliche Vorliebe: bevorzugt (darf etwas teurer sein) oder meiden (nur, wenn es nirgends sonst gibt). */
+  preference?: 'prefer' | 'avoid'
 }
+
+/** Einstellungen für die Verteilung auf Shops, die nicht zu einem einzelnen Shop gehören. */
+export interface ShopPreferences {
+  /** Gefühlte Kosten je zusätzlicher Bestellung (Pakete annehmen, Konten, Überblick), nur für die Entscheidung. */
+  extraOrderCost?: number
+}
+
+/** Ein bevorzugter Shop darf bis zu so viel teurer sein. */
+export const PREFER_MARGIN = 0.1
 
 export interface ShopOrder {
   shop: string
@@ -115,8 +126,11 @@ function optionsFor(inv: Inventory, key: MaterialKey, shortfall: number, today: 
   return out
 }
 
-/** Gesamtkosten einer Zuordnung Material → Option inklusive Nebenkosten aller beteiligten Shops. */
-function assignmentCost(choice: Option[], terms: Map<string, ShopTerms>): number {
+/**
+ * Bewertung einer Zuordnung Material → Option: Ware + Nebenkosten aller beteiligten Shops, dazu persönliche
+ * Gewichte (Vorliebe, Aufwand je weitere Bestellung). Die Gewichte steuern nur die Wahl, angezeigt wird der echte Preis.
+ */
+function assignmentCost(choice: Option[], terms: Map<string, ShopTerms>, prefs: ShopPreferences = {}): number {
   const subtotals = new Map<string, number>()
   const grams = new Map<string, number>()
   for (const o of choice) {
@@ -124,7 +138,14 @@ function assignmentCost(choice: Option[], terms: Map<string, ShopTerms>): number
     grams.set(o.shop, (grams.get(o.shop) ?? 0) + o.grams)
   }
   let total = 0
-  for (const [shop, sub] of subtotals) total += shopCosts(sub, terms.get(shop), shop, parcelKg(grams.get(shop) ?? 0)).total
+  let orders = 0
+  for (const [shop, sub] of subtotals) {
+    const t = terms.get(shop)
+    total += shopCosts(sub, t, shop, parcelKg(grams.get(shop) ?? 0)).total
+    if (t?.preference === 'prefer') total -= sub * PREFER_MARGIN
+    if (!t?.local) orders++
+  }
+  total += Math.max(0, orders - 1) * (prefs.extraOrderCost ?? 0)
   return Math.round(total * 100) / 100
 }
 
@@ -136,23 +157,35 @@ const EXHAUSTIVE_LIMIT = 50_000
  * Bei wenigen Kombinationen exakt; sonst Heuristik: von mehreren Startpunkten aus werden einzelne Materialien
  * so lange umgehängt, wie es billiger wird.
  */
-export function optimizeShops(inv: Inventory, needs: Need[], shops: ShopTerms[], today = new Date().toISOString().slice(0, 10)): ShoppingSuggestion[] {
+export function optimizeShops(
+  inv: Inventory,
+  needs: Need[],
+  shops: ShopTerms[],
+  today = new Date().toISOString().slice(0, 10),
+  prefs: ShopPreferences = {},
+): ShoppingSuggestion[] {
   const terms = new Map(shops.map((t) => [t.name, t]))
+  const avoided = (o: Option) => terms.get(o.shop)?.preference === 'avoid'
   const items = mergeNeeds(needs)
     .map((need) => ({ need, shortfall: need.grams - materialStock(inv, need.key) }))
     .filter((x) => x.shortfall > 0)
-    .map((x) => ({ ...x, options: optionsFor(inv, x.need.key, x.shortfall, today) }))
+    .map((x) => {
+      const all = optionsFor(inv, x.need.key, x.shortfall, today)
+      // Gemiedene Shops nur, wenn es das Material sonst nirgends gibt.
+      const options = all.some((o) => !avoided(o)) ? all.filter((o) => !avoided(o)) : all
+      return { ...x, options }
+    })
   const open = items.filter((x) => x.options.length)
 
   let best: Option[] = open.map((x) => x.options.reduce((a, b) => ((a.cost ?? 0) <= (b.cost ?? 0) ? a : b)))
-  let bestCost = assignmentCost(best, terms)
+  let bestCost = assignmentCost(best, terms, prefs)
   const combinations = open.reduce((n, x) => n * x.options.length, 1)
 
   if (combinations <= EXHAUSTIVE_LIMIT) {
     const idx = open.map(() => 0)
     for (let n = 0; n < combinations; n++) {
       const choice = open.map((x, i) => x.options[idx[i]])
-      const cost = assignmentCost(choice, terms)
+      const cost = assignmentCost(choice, terms, prefs)
       if (cost < bestCost) {
         best = choice
         bestCost = cost
@@ -164,13 +197,13 @@ export function optimizeShops(inv: Inventory, needs: Need[], shops: ShopTerms[],
     const starts = [best, ...[...new Set(open.flatMap((x) => x.options.map((o) => o.shop)))].map((shop) => open.map((x, i) => x.options.find((o) => o.shop === shop) ?? best[i]))]
     for (const start of starts) {
       let current = start
-      let currentCost = assignmentCost(current, terms)
+      let currentCost = assignmentCost(current, terms, prefs)
       for (let improved = true; improved; ) {
         improved = false
         for (let i = 0; i < open.length; i++)
           for (const o of open[i].options) {
             const choice = current.map((b, j) => (j === i ? o : b))
-            const cost = assignmentCost(choice, terms)
+            const cost = assignmentCost(choice, terms, prefs)
             if (cost < currentCost - 0.001) {
               current = choice
               currentCost = cost

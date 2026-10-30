@@ -86,7 +86,7 @@ export function RecipeList() {
 
   const card = (r: Recipe, variant: boolean) => {
     const f = facts(r, w.inventory)
-    const feas = recipeFeasibility(r, w.inventory)
+    const feas = recipeFeasibility(r, w.inventory, w.batchFat)
     return (
       <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${variant ? 'rounded-xl bg-surface-2 p-3' : ''}`}>
         <Link to={`/rezepte/${r.id}`} className="group min-w-0 flex-1">
