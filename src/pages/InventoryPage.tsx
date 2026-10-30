@@ -24,6 +24,7 @@ import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
 import { importSalandia } from '../import/salandia'
 import { importSalandiaCatalog, isCatalog } from '../import/salandiaCatalog'
+import { importShopCatalog, isShopCatalog } from '../import/shopCatalog'
 import { ChevronRight, Upload } from 'lucide-react'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ProductCategory[]
@@ -473,6 +474,16 @@ function Import() {
   async function importFile(file: File): Promise<string> {
     const data = JSON.parse(await file.text())
     const inv = await loadInventory()
+    if (isShopCatalog(data)) {
+      const { shop, products, updates } = importShopCatalog(data, inv.products, await db.shops.get(data.shop.name.trim()))
+      await db.transaction('rw', db.products, db.shops, async () => {
+        await db.products.bulkAdd(products)
+        await db.products.bulkUpdate(updates.map((u) => ({ key: u.id, changes: u.changes })))
+        await db.shops.put(shop)
+      })
+      const shipping = shop.shipping !== undefined ? `, Versand ${fmt(shop.shipping, 2)} €${shop.freeShippingFrom !== undefined ? `, frei ab ${fmt(shop.freeShippingFrom, 0)} €` : ''}` : ''
+      return `${file.name}: ${shop.name}, ${products.length} neue Artikel, ${updates.length} Preise aktualisiert${shipping}.`
+    }
     if (isCatalog(data)) {
       const { products, updates } = importSalandiaCatalog(data, inv.products)
       await db.transaction('rw', db.products, async () => {
@@ -503,10 +514,10 @@ function Import() {
 
   return (
     <div className="card max-w-2xl space-y-4">
-      <h2 className="font-semibold">Salandia importieren</h2>
+      <h2 className="font-semibold">Shop-Daten importieren</h2>
       <p className="text-sm text-muted">
-        Eine oder mehrere JSON-Dateien wählen. Die App erkennt selbst, ob es deine <b>Bestellübersicht</b> (eigene Einkäufe mit
-        Preisen) oder ein <b>Katalog-Auszug</b> (aktuelle Shop-Preise) ist. Fette, Laugen und Zusätze werden automatisch zugeordnet.
+        Eine oder mehrere JSON-Dateien wählen, die App erkennt das Format selbst: <b>Shop-Katalog</b> (beliebiger Shop, mit
+        Versandkosten), Salandia-Katalog oder Salandia-Bestellübersicht. Fette, Laugen und Zusätze werden automatisch zugeordnet.
         Mehrfaches Einlesen ist unschädlich: Bekanntes wird nur aktualisiert.
       </p>
       <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line text-muted transition hover:border-accent hover:text-ink">
