@@ -13,6 +13,7 @@ const catalog: ShopCatalog = {
     { name: 'Kokosfett 1 kg', art: 'fett', preis_eur: 8 },
     { name: 'Natriumhydroxid Perlen 1 kg', art: 'lauge', preis_eur: 11.9 },
     { name: 'Olivem 1000', art: 'emulgator', packungsgroesse: 100, einheit: 'g', preis_eur: 6 },
+    { name: 'Zitronensäureester (Triethyl Citrate) 100 ml', art: 'wirkstoff', preis_eur: 5 },
     { name: 'ohne Preis', preis_eur: null },
   ],
 }
@@ -40,7 +41,8 @@ describe('Shop-Katalog (allgemeines Format)', () => {
     expect(by['Kokosfett 1 kg']).toMatchObject({ fatId: 'coconut', unit: 'g', packageSize: 1000 })
     expect(by['Natriumhydroxid Perlen 1 kg']).toMatchObject({ category: 'lye', lyeType: 'NaOH' })
     expect(by['Olivem 1000'].category).toBe('cosmetic')
-    expect(r.products).toHaveLength(6)
+    expect(by['Zitronensäureester (Triethyl Citrate) 100 ml'].additiveId).toBeUndefined()
+    expect(r.products).toHaveLength(7)
   })
 
   it('übernimmt Versand nach Gewicht', () => {

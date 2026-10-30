@@ -73,6 +73,8 @@ describe('Einkauf', () => {
     expect(productLine('Sala Kokosöl kaltgepresst bio 250 ml Glastiegel')).toBe('sala kokosöl kaltgepresst bio')
     expect(productLine('Sala Kokosöl kaltgepresst bio 1 L 1000 ml Glas')).toBe('sala kokosöl kaltgepresst bio')
     expect(productLine('Sala Rizinusöl kaltgepresst BIO 2,5 L 2500 ml Kanister')).toBe('sala rizinusöl kaltgepresst bio')
+    expect(productLine('Rizinusöl kaltgepresst BIO 5 Liter')).toBe('rizinusöl kaltgepresst bio')
+    expect(productLine('Babassuöl raffiniert 5 Kg')).toBe('babassuöl raffiniert')
   })
 
   it('fasst Bedarfe zusammen und lässt Gedecktes weg', () => {

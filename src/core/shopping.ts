@@ -1,4 +1,5 @@
 import type { Need } from './batch'
+import { shelfLifeCap, shelfMonths } from './shelfLife'
 import { optimizeShops, type ShopPreferences, type ShopTerms } from './shops'
 import { bestProduct, materialKey, materialStock, offerPrice, packageGrams, pricePerKg, type Inventory, type MaterialKey, type Product } from './inventory'
 
@@ -7,7 +8,8 @@ export { bestProduct }
 // Einkauf: aus dem Bedarf (z. B. geplante Sude) und dem Bestand eine Bestellliste ableiten.
 
 /**
- * - `perKg`: eine Packungsgröße mit dem besten Preis pro kg (Vorrat für später, Rest bleibt übrig)
+ * - `perKg`: Vorrat: eine Packungsgröße mit dem besten Preis pro kg, aber nicht größer als das, was man in der
+ *   Haltbarkeit verbraucht (siehe shelfLife.ts)
  * - `total`: kleinste Gesamtsumme für genau diesen Bedarf: Packungen derselben Produktlinie kombiniert, über alle Shops
  *   verteilt, Versand und Gebühren eingerechnet (siehe shops.ts)
  */
@@ -29,6 +31,8 @@ export interface ShoppingSuggestion {
   total?: number
   /** Was nach dem Sieden übrig bleibt, in g. */
   leftover: number
+  /** Faustregel: so viele Monate hält das Material geöffnet (nur Fette). */
+  shelfMonths?: number
   pricePerKg?: number
 }
 
@@ -45,7 +49,7 @@ export function mergeNeeds(needs: Need[]): Need[] {
 /** Name ohne Größe und Gebinde: „Sala Kokosöl kaltgepresst bio 250 ml Glastiegel“ → „sala kokosöl kaltgepresst bio“. */
 export function productLine(name: string): string {
   return name
-    .split(/\s\d+(?:[.,]\d+)?\s?(?:kg|g|l|ml)\b/i)[0]
+    .split(/\s\d+(?:[.,]\d+)?\s?(?:kg|g|l|ml|liter|kilo(?:gramm)?|gramm|milliliter)\b/i)[0]
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim()
@@ -111,6 +115,22 @@ export function linePacks(inv: Inventory, key: MaterialKey, best: Product, today
   return packs.some((p) => p.current) ? packs.filter((p) => p.current) : packs
 }
 
+/**
+ * Vorrat ja, aber nicht mehr, als in der Haltbarkeit verbraucht wird: Ist die beste Packung zu groß, nimmt der
+ * Einkauf die günstigste (pro kg) mit aktuellem Preis, die noch passt.
+ */
+function withinShelfLife(inv: Inventory, key: MaterialKey, shortfall: number, best: Product | undefined, today: string): Product | undefined {
+  const cap = shelfLifeCap(key, shortfall)
+  if (!best || cap === undefined || (packageGrams(best) ?? 0) <= cap) return best
+  const cutoff = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`
+  const perKg = (p: Product) => {
+    const o = offerPrice(inv, p)
+    return o && o.date >= cutoff ? pricePerKg(p, o.unitPrice)! : Infinity
+  }
+  const fitting = inv.products.filter((p) => materialKey(p) === key && p.available !== false && (packageGrams(p) ?? Infinity) <= cap && perKg(p) < Infinity)
+  return fitting.sort((a, b) => perKg(a) - perKg(b))[0] ?? best
+}
+
 export function planShopping(
   inv: Inventory,
   needs: Need[],
@@ -128,7 +148,7 @@ export function planShopping(
     .map((need): ShoppingSuggestion | undefined => {
       const shortfall = need.grams - materialStock(inv, need.key)
       if (shortfall <= 0) return undefined
-      const product = bestProduct(allowed, need.key) ?? bestProduct(inv, need.key)
+      const product = withinShelfLife(allowed, need.key, shortfall, bestProduct(allowed, need.key) ?? bestProduct(inv, need.key), today)
       const grams = product && packageGrams(product)
       if (!product || !grams) return { need, shortfall, lines: [], leftover: 0 }
       const unitPrice = offerPrice(inv, product)?.unitPrice
@@ -142,6 +162,7 @@ export function planShopping(
         total: unitPrice !== undefined ? unitPrice * packages : undefined,
         leftover: packages * grams - shortfall,
         pricePerKg: perKg,
+        shelfMonths: shelfMonths(need.key),
       }
     })
     .filter((s): s is ShoppingSuggestion => !!s)

@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Calculator, Copy, ExternalLink, Minus, PackageCheck, PiggyBank, Plus, ShoppingCart, Store, Truck, X } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
 import { EmptyState, LabelText, PageHeader, Panel } from '../components/ui'
@@ -8,11 +8,11 @@ import { needsOf } from '../core/batch'
 import { calculate } from '../core/calc'
 import { CATEGORY_LABELS, materialKey, offerPrice, packageGrams, type Inventory, type Product } from '../core/inventory'
 import { planShopping, type ShoppingMode, type ShoppingSuggestion } from '../core/shopping'
-import { optimizeShops, parcelKg, shopCosts, summarizeOrders, type ShopOrder, type ShopPreferences, type ShopTerms } from '../core/shops'
+import { optimizeShops, parcelKg, shopCosts, summarizeOrders, type ShopOrder, type ShopTerms } from '../core/shops'
 import type { Need } from '../core/batch'
-import { db, receiveOrderItem, type OrderItem, type Recipe } from '../db'
+import { db, receiveOrderItem, type OrderItem } from '../db'
 import { fmt } from '../format'
-import { atBatchSize, BATCH_FAT_KEY, de, EXTRA_ORDER_KEY, groupRecipes, useWorkshop } from '../hooks'
+import { atBatchSize, BATCH_FAT_KEY, de, EXTRA_ORDER_KEY, groupRecipes, useWorkshop, type Workshop } from '../hooks'
 
 export function Shopping() {
   const w = useWorkshop()
@@ -41,19 +41,7 @@ export function Shopping() {
       return []
     }
   })
-  // Was schon auf der Liste oder unterwegs ist, zählt wie Vorrat.
-  const pending = orderItems.filter((o) => o.status !== 'received')
-  const pendingInv = {
-    ...inventory,
-    lots: [
-      ...inventory.lots,
-      ...pending.map((o) => {
-        const p = byId.get(o.productId)
-        const g = p ? (packageGrams(p) ?? 0) * o.packages : 0
-        return { id: o.id, productId: o.productId, gramsInitial: g, gramsLeft: g }
-      }),
-    ],
-  }
+  const pendingInv = withPending(inventory, orderItems)
   const prefs = { extraOrderCost: w.extraOrderCost }
   const suggestions = planShopping(pendingInv, needs, mode, undefined, terms, prefs)
   const orders = summarizeOrders(suggestions, terms)
@@ -97,7 +85,7 @@ export function Shopping() {
     <div className="space-y-6">
       <PageHeader eyebrow="Einkauf" title="Was muss bestellt werden?" />
 
-      <BatchCosts recipes={w.recipes} inv={pendingInv} batchFat={w.batchFat} terms={terms} prefs={prefs} onPlan={(id) => {
+      <BatchCosts w={w} storedShops={storedShops} onPlan={(id) => {
           setPlan({ [id]: 1 })
           setMode('total')
         }} />
@@ -140,7 +128,7 @@ export function Shopping() {
                 <div className="mb-3 inline-flex flex-wrap gap-1 rounded-xl bg-surface-2 p-1" role="group" aria-label="Packungen wählen nach">
                   {(
                     [
-                      ['perKg', 'Bester Preis pro kg'],
+                      ['perKg', 'Vorrat: bester kg-Preis'],
                       ['total', 'Nur was gebraucht wird'],
                     ] as const
                   ).map(([m, label]) => (
@@ -169,7 +157,11 @@ export function Shopping() {
                               {l.product.supplier && <span className="text-xs"> · {l.product.supplier}</span>}
                             </span>
                           ))}
-                          {s.leftover >= 1 && <span className="block text-xs">Rest ca. {fmt(s.leftover)} g</span>}
+                          {s.leftover >= 1 && (
+                            <span className="block text-xs">
+                              Rest ca. {fmt(s.leftover)} g{s.shelfMonths && ` · hält geöffnet ca. ${s.shelfMonths} Monate`}
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <AssignProduct need={s.need} products={inventory.products} />
@@ -597,25 +589,17 @@ function WeightTiers({ terms, onChange }: { terms: ShopTerms; onChange: (tiers: 
  * Was kostet ein Sud jetzt? Je Rezept in der eigenen Sudgröße: was heute eingekauft werden müsste (günstigste
  * Verteilung inkl. Versand, Vorrat und offene Bestellungen abgezogen). Für „wenig Geld, schnell sieden“.
  */
-function BatchCosts({
-  recipes,
-  inv,
-  batchFat,
-  terms,
-  prefs,
-  onPlan,
-}: {
-  recipes: Recipe[]
-  inv: Inventory
-  batchFat?: number
-  terms: ShopTerms[]
-  prefs: ShopPreferences
-  onPlan: (id: string) => void
-}) {
-  const rows = recipes
+function BatchCosts({ w, storedShops, onPlan }: { w: Workshop; storedShops: ShopTerms[]; onPlan: (id: string) => void }) {
+  // Je Rezept eine Optimierung über alle Shops: nur neu rechnen, wenn sich Daten in der Datenbank ändern
+  // (w und storedShops kommen aus Live-Abfragen und bleiben sonst dieselben Objekte).
+  const rows = useMemo(() => {
+    const inv = withPending(w.inventory, w.orderItems)
+    const terms = shopTerms(storedShops, w.inventory.products)
+    const prefs = { extraOrderCost: w.extraOrderCost }
+    return w.recipes
     .flatMap((r) => {
       try {
-        const sized = atBatchSize(r, batchFat)
+        const sized = atBatchSize(r, w.batchFat)
         const suggestions = optimizeShops(inv, needsOf(calculate(sized.input)), terms, undefined, prefs)
         const orders = summarizeOrders(suggestions, terms)
         return [
@@ -633,6 +617,7 @@ function BatchCosts({
       }
     })
     .sort((a, b) => Number(a.missing.length > 0) - Number(b.missing.length > 0) || a.cash - b.cash)
+  }, [w, storedShops])
   if (!rows.length) return null
   return (
     <Panel title="Was kostet ein Sud jetzt?" icon={PiggyBank}>
@@ -659,4 +644,22 @@ function BatchCosts({
       </ul>
     </Panel>
   )
+}
+
+/** Was schon auf der Liste oder unterwegs ist, zählt für die Planung wie Vorrat. */
+function withPending(inventory: Inventory, orderItems: OrderItem[]): Inventory {
+  const byId = new Map(inventory.products.map((p) => [p.id, p]))
+  return {
+    ...inventory,
+    lots: [
+      ...inventory.lots,
+      ...orderItems
+        .filter((o) => o.status !== 'received')
+        .map((o) => {
+          const p = byId.get(o.productId)
+          const g = p ? (packageGrams(p) ?? 0) * o.packages : 0
+          return { id: o.id, productId: o.productId, gramsInitial: g, gramsLeft: g }
+        }),
+    ],
+  }
 }

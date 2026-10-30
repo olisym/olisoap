@@ -95,6 +95,8 @@ const RULES: Rule[] = [
   [/glycerin/i, { category: 'additive', additiveId: 'glycerin' }],
   [/natriumlaktat/i, { category: 'additive', additiveId: 'sodium-lactate-60' }],
   [/seidenprotein|silkprotein/i, { category: 'additive', additiveId: 'silk-protein' }],
+  // Zitronensäureester (Triethylcitrat) ist ein ganz anderer Stoff
+  [/zitronensäureester|triethyl ?citrat/i, { category: 'cosmetic' }],
   [/zitronensäure/i, { category: 'additive', additiveId: 'citric-anhydrous' }],
   [/natriumcitrat/i, { category: 'additive', additiveId: 'sodium-citrate' }],
   [/kaolin|weiße tonerde/i, { category: 'additive', additiveId: 'kaolin' }],

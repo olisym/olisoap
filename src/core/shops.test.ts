@@ -100,6 +100,13 @@ describe('Einkauf über mehrere Shops', () => {
     expect(shopOfLines(optimizeShops(inv([item('b-cocoa', 'B', 'cocoa', 500, 9)]), [need('cocoa', 400)], [{ name: 'B', preference: 'avoid' }], today))).toEqual({ cocoa: 'B' })
   })
 
+  it('übergeht nicht lieferbare Artikel', () => {
+    const products = [{ ...item('a-olive', 'A', 'olive', 500, 3), available: false }, item('b-olive', 'B', 'olive', 500, 6)]
+    const s = optimizeShops(inv(products), [need('olive', 400)], shops, today)
+    expect(s[0].lines.map((l) => l.product.id)).toEqual(['b-olive'])
+    expect(s[0].total).toBe(6)
+  })
+
   it('berücksichtigt den Mindestbestellwert', () => {
     // B ist für Kakao billiger, hat aber 20 € Mindestbestellwert: 8 + 12 Aufschlag + 4,90.
     const products = [item('a-shea', 'A', 'shea', 500, 10), item('a-cocoa', 'A', 'cocoa', 500, 9.5), item('b-cocoa', 'B', 'cocoa', 500, 3)]

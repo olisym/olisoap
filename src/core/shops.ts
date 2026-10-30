@@ -1,5 +1,6 @@
 import type { Need } from './batch'
 import { bestProduct, materialStock, offerPrice, packageGrams, type Inventory, type MaterialKey, type Product } from './inventory'
+import { shelfMonths } from './shelfLife'
 import { cheapestCover, linePacks, mergeNeeds, type ShoppingLine, type ShoppingSuggestion } from './shopping'
 
 // Einkauf über mehrere Shops: Jeder Shop hat Nebenkosten (Versand pauschal oder nach Gewicht, versandkostenfrei ab,
@@ -110,15 +111,16 @@ function optionsFor(inv: Inventory, key: MaterialKey, shortfall: number, today: 
   const shops = new Set(inv.products.map(shopOf))
   const out: Option[] = []
   for (const shop of shops) {
-    const sub = { ...inv, products: inv.products.filter((p) => shopOf(p) === shop) }
+    // Nicht lieferbare Artikel kommen nicht in Frage.
+    const sub = { ...inv, products: inv.products.filter((p) => shopOf(p) === shop && p.available !== false) }
     const best = bestProduct(sub, key, today)
     const grams = best && packageGrams(best)
     if (!best || !grams) continue
     const cover = cheapestCover(linePacks(sub, key, best, today), shortfall)
     if (cover) {
       out.push({ shop, lines: cover.lines.map((l) => ({ product: l.pack.product, packages: l.count, unitPrice: l.pack.price })), cost: cover.price, grams: cover.grams })
-    } else {
-      // Ohne Preis (Laden vor Ort): eine Größe, so oft wie nötig.
+    } else if (offerPrice(sub, best) === undefined) {
+      // Ohne Preis (Laden vor Ort): eine Größe, so oft wie nötig. Mit veraltetem Preis dagegen: kein Angebot.
       const packages = Math.ceil(shortfall / grams)
       out.push({ shop, lines: [{ product: best, packages, unitPrice: offerPrice(inv, best)?.unitPrice }], grams: packages * grams })
     }
@@ -229,6 +231,7 @@ export function optimizeShops(
       total: o.cost,
       leftover: o.grams - shortfall,
       pricePerKg: o.cost !== undefined ? (o.cost / o.grams) * 1000 : undefined,
+      shelfMonths: shelfMonths(need.key),
     }
   })
 }
