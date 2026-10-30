@@ -1,0 +1,171 @@
+import type { Need } from './batch'
+import { bestProduct, materialStock, offerPrice, packageGrams, type Inventory, type MaterialKey, type Product } from './inventory'
+import { cheapestCover, linePacks, mergeNeeds, type ShoppingLine, type ShoppingSuggestion } from './shopping'
+
+// Einkauf über mehrere Shops: Jeder Shop hat Nebenkosten (Versand, versandkostenfrei ab, Mindestbestellwert,
+// Zahlungsgebühr). Gesucht ist die Verteilung des Bedarfs auf die Shops mit der kleinsten Gesamtsumme.
+
+export interface ShopTerms {
+  /** Entspricht `Product.supplier`. */
+  name: string
+  /** Versandkosten in €. Fehlt = unbekannt (wird als 0 gerechnet und gemeldet). */
+  shipping?: number
+  /** Ab diesem Warenwert versandkostenfrei. */
+  freeShippingFrom?: number
+  /** Unter diesem Warenwert wird die Differenz als Aufschlag gerechnet (man müsste ohnehin mehr kaufen). */
+  minOrder?: number
+  /** Feste Gebühr pro Bestellung, z. B. für die Zahlungsart. */
+  paymentFee?: number
+  /** Laden vor Ort: keine Versandkosten. */
+  local?: boolean
+}
+
+export interface ShopOrder {
+  shop: string
+  subtotal: number
+  shipping: number
+  fee: number
+  /** Aufschlag bis zum Mindestbestellwert. */
+  minimumGap: number
+  total: number
+  /** Versandkosten nicht hinterlegt. */
+  unknownShipping: boolean
+}
+
+/** Nebenkosten einer Bestellung bei einem Shop. */
+export function shopCosts(subtotal: number, terms: ShopTerms | undefined, name: string): ShopOrder {
+  const free = terms?.local || (terms?.freeShippingFrom !== undefined && subtotal >= terms.freeShippingFrom)
+  const shipping = free ? 0 : (terms?.shipping ?? 0)
+  const fee = terms?.paymentFee ?? 0
+  const minimumGap = terms?.minOrder !== undefined ? Math.max(0, terms.minOrder - subtotal) : 0
+  return {
+    shop: name,
+    subtotal,
+    shipping,
+    fee,
+    minimumGap,
+    total: subtotal + shipping + fee + minimumGap,
+    unknownShipping: !terms?.local && terms?.shipping === undefined,
+  }
+}
+
+const shopOf = (p: Product) => p.supplier ?? 'Sonstige'
+
+/** Bestellungen je Shop aus fertigen Vorschlägen (für beide Einkaufs-Modi). */
+export function summarizeOrders(suggestions: ShoppingSuggestion[], shops: ShopTerms[]): ShopOrder[] {
+  const subtotals = new Map<string, number>()
+  for (const s of suggestions)
+    for (const l of s.lines) subtotals.set(shopOf(l.product), (subtotals.get(shopOf(l.product)) ?? 0) + (l.unitPrice ?? 0) * l.packages)
+  const terms = new Map(shops.map((t) => [t.name, t]))
+  return [...subtotals].map(([name, sub]) => shopCosts(sub, terms.get(name), name))
+}
+
+interface Option {
+  shop: string
+  lines: ShoppingLine[]
+  /** Preis der Packungen; undefined = Preis unbekannt (z. B. Supermarkt), zählt als 0. */
+  cost?: number
+  grams: number
+}
+
+/** Je Shop die günstigste Abdeckung des Bedarfs mit Packungen einer Produktlinie dieses Shops. */
+function optionsFor(inv: Inventory, key: MaterialKey, shortfall: number, today: string): Option[] {
+  const shops = new Set(inv.products.map(shopOf))
+  const out: Option[] = []
+  for (const shop of shops) {
+    const sub = { ...inv, products: inv.products.filter((p) => shopOf(p) === shop) }
+    const best = bestProduct(sub, key, today)
+    const grams = best && packageGrams(best)
+    if (!best || !grams) continue
+    const cover = cheapestCover(linePacks(sub, key, best, today), shortfall)
+    if (cover) {
+      out.push({ shop, lines: cover.lines.map((l) => ({ product: l.pack.product, packages: l.count, unitPrice: l.pack.price })), cost: cover.price, grams: cover.grams })
+    } else {
+      // Ohne Preis (Laden vor Ort): eine Größe, so oft wie nötig.
+      const packages = Math.ceil(shortfall / grams)
+      out.push({ shop, lines: [{ product: best, packages, unitPrice: offerPrice(inv, best)?.unitPrice }], grams: packages * grams })
+    }
+  }
+  return out
+}
+
+/** Gesamtkosten einer Zuordnung Material → Option inklusive Nebenkosten aller beteiligten Shops. */
+function assignmentCost(choice: Option[], terms: Map<string, ShopTerms>): number {
+  const subtotals = new Map<string, number>()
+  for (const o of choice) subtotals.set(o.shop, (subtotals.get(o.shop) ?? 0) + (o.cost ?? 0))
+  let total = 0
+  for (const [shop, sub] of subtotals) total += shopCosts(sub, terms.get(shop), shop).total
+  return Math.round(total * 100) / 100
+}
+
+/** Bis zu dieser Zahl an Kombinationen wird exakt durchgerechnet, darüber schrittweise verbessert. */
+const EXHAUSTIVE_LIMIT = 50_000
+
+/**
+ * Verteilt den Bedarf auf Shops mit der kleinsten Gesamtsumme (Ware + Versand + Gebühren + Mindestbestellwert).
+ * Bei wenigen Kombinationen exakt; sonst Heuristik: von mehreren Startpunkten aus werden einzelne Materialien
+ * so lange umgehängt, wie es billiger wird.
+ */
+export function optimizeShops(inv: Inventory, needs: Need[], shops: ShopTerms[], today = new Date().toISOString().slice(0, 10)): ShoppingSuggestion[] {
+  const terms = new Map(shops.map((t) => [t.name, t]))
+  const items = mergeNeeds(needs)
+    .map((need) => ({ need, shortfall: need.grams - materialStock(inv, need.key) }))
+    .filter((x) => x.shortfall > 0)
+    .map((x) => ({ ...x, options: optionsFor(inv, x.need.key, x.shortfall, today) }))
+  const open = items.filter((x) => x.options.length)
+
+  let best: Option[] = open.map((x) => x.options.reduce((a, b) => ((a.cost ?? 0) <= (b.cost ?? 0) ? a : b)))
+  let bestCost = assignmentCost(best, terms)
+  const combinations = open.reduce((n, x) => n * x.options.length, 1)
+
+  if (combinations <= EXHAUSTIVE_LIMIT) {
+    const idx = open.map(() => 0)
+    for (let n = 0; n < combinations; n++) {
+      const choice = open.map((x, i) => x.options[idx[i]])
+      const cost = assignmentCost(choice, terms)
+      if (cost < bestCost) {
+        best = choice
+        bestCost = cost
+      }
+      for (let i = 0; i < idx.length && ++idx[i] === open[i].options.length; i++) idx[i] = 0
+    }
+  } else {
+    // Start bei „jeweils günstigst“ und bei „möglichst alles bei Shop X“ (je Shop), dann einzeln umhängen.
+    const starts = [best, ...[...new Set(open.flatMap((x) => x.options.map((o) => o.shop)))].map((shop) => open.map((x, i) => x.options.find((o) => o.shop === shop) ?? best[i]))]
+    for (const start of starts) {
+      let current = start
+      let currentCost = assignmentCost(current, terms)
+      for (let improved = true; improved; ) {
+        improved = false
+        for (let i = 0; i < open.length; i++)
+          for (const o of open[i].options) {
+            const choice = current.map((b, j) => (j === i ? o : b))
+            const cost = assignmentCost(choice, terms)
+            if (cost < currentCost - 0.001) {
+              current = choice
+              currentCost = cost
+              improved = true
+            }
+          }
+      }
+      if (currentCost < bestCost) {
+        best = current
+        bestCost = currentCost
+      }
+    }
+  }
+
+  const chosen = new Map(open.map((x, i) => [x.need.key, best[i]]))
+  return items.map(({ need, shortfall }) => {
+    const o = chosen.get(need.key)
+    if (!o) return { need, shortfall, lines: [], leftover: 0 }
+    return {
+      need,
+      shortfall,
+      lines: o.lines,
+      total: o.cost,
+      leftover: o.grams - shortfall,
+      pricePerKg: o.cost !== undefined ? (o.cost / o.grams) * 1000 : undefined,
+    }
+  })
+}

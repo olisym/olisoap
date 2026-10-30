@@ -1,4 +1,5 @@
-import { Calculator, Copy, ExternalLink, Minus, PackageCheck, Plus, ShoppingCart, Truck, X } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Calculator, Copy, ExternalLink, Minus, PackageCheck, Plus, ShoppingCart, Store, Truck, X } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
@@ -7,6 +8,7 @@ import { needsOf } from '../core/batch'
 import { calculate } from '../core/calc'
 import { CATEGORY_LABELS, materialKey, offerPrice, packageGrams, type Product } from '../core/inventory'
 import { planShopping, type ShoppingMode, type ShoppingSuggestion } from '../core/shopping'
+import { shopCosts, summarizeOrders, type ShopOrder, type ShopTerms } from '../core/shops'
 import type { Need } from '../core/batch'
 import { db, receiveOrderItem, type OrderItem } from '../db'
 import { fmt } from '../format'
@@ -24,8 +26,10 @@ export function Shopping() {
     const id = params.get('rezept')
     return id ? { [id]: Number(params.get('faktor')) || 1 } : {}
   })
-  if (!w) return null
+  const storedShops = useLiveQuery(() => db.shops.toArray(), [])
+  if (!w || !storedShops) return null
   const { inventory, orderItems } = w
+  const terms = shopTerms(storedShops, inventory.products)
   const byId = new Map(inventory.products.map((p) => [p.id, p]))
 
   const needs = w.recipes.flatMap((r) => {
@@ -50,8 +54,10 @@ export function Shopping() {
       }),
     ],
   }
-  const suggestions = planShopping(pendingInv, needs, mode)
-  const totalOf = (m: ShoppingMode) => planShopping(pendingInv, needs, m).reduce((sum, x) => sum + (x.total ?? 0), 0)
+  const suggestions = planShopping(pendingInv, needs, mode, undefined, terms)
+  const orders = summarizeOrders(suggestions, terms)
+  // Summe inklusive Versand und Gebühren, damit beide Modi ehrlich vergleichbar sind.
+  const totalOf = (m: ShoppingMode) => summarizeOrders(planShopping(pendingInv, needs, m, undefined, terms), terms).reduce((sum, o) => sum + o.total, 0)
 
   const open = orderItems.filter((o) => o.status === 'open')
   const ordered = orderItems.filter((o) => o.status === 'ordered')
@@ -148,6 +154,7 @@ export function Shopping() {
                           {s.lines.map((l) => (
                             <span key={l.product.id} className="block">
                               {l.packages}× {l.product.name}
+                              {l.product.supplier && <span className="text-xs"> · {l.product.supplier}</span>}
                             </span>
                           ))}
                           {s.leftover >= 1 && <span className="block text-xs">Rest ca. {fmt(s.leftover)} g</span>}
@@ -159,6 +166,7 @@ export function Shopping() {
                     </li>
                   ))}
                 </ul>
+                <OrderSummary orders={orders} />
                 <div className="mt-4 flex justify-end">
                   <button className="btn-primary" disabled={!suggestions.some((s) => s.lines.length)} onClick={() => addSuggestions(suggestions)}>
                     <ShoppingCart size={18} /> Auf die Einkaufsliste
@@ -174,7 +182,17 @@ export function Shopping() {
         <Panel
           title="Einkaufsliste"
           icon={ShoppingCart}
-          action={open.length > 0 && <span className="text-lg font-semibold tabular-nums">{fmt(openTotal, 2)} €</span>}
+          action={
+            open.length > 0 && (
+              <span className="text-lg font-semibold tabular-nums">
+                {fmt(openTotal + bySupplier(open, byId).reduce((sum, [shop, items]) => {
+                  const c = shopCosts(items.reduce((a, o) => a + (o.unitPrice ?? 0) * o.packages, 0), terms.find((t) => t.name === shop), shop)
+                  return sum + c.shipping + c.fee
+                }, 0), 2)}{' '}
+                €
+              </span>
+            )
+          }
         >
           {open.length === 0 ? (
             <EmptyState icon={ShoppingCart} title="Liste ist leer">
@@ -185,9 +203,9 @@ export function Shopping() {
               <div className="space-y-4">
                 {bySupplier(open, byId).map(([supplier, items]) => (
                   <section key={supplier} aria-label={supplier}>
-                    <h3 className="eyebrow mb-2 flex justify-between">
+                    <h3 className="eyebrow mb-2 flex justify-between gap-3">
                       <span>{supplier}</span>
-                      <span className="tabular-nums">{fmt(items.reduce((sum, o) => sum + (o.unitPrice ?? 0) * o.packages, 0), 2)} €</span>
+                      <span className="tabular-nums">{costLine(shopCosts(items.reduce((sum, o) => sum + (o.unitPrice ?? 0) * o.packages, 0), terms.find((t) => t.name === supplier), supplier))}</span>
                     </h3>
                     <ul className="space-y-2">
                       {items.map((o) => (
@@ -225,6 +243,7 @@ export function Shopping() {
               </ul>
             )}
           </Panel>
+          <ShopSettings terms={terms} />
           {received.length > 0 && (
             <Panel title="Zuletzt eingetroffen" icon={PackageCheck}>
               <ul className="space-y-1 text-sm">
@@ -422,5 +441,82 @@ function AssignProduct({ need, products }: { need: Need; products: Product[] }) 
         </button>
       </div>
     </details>
+  )
+}
+
+/** Bekannte Shops: gespeicherte Bedingungen plus alle Lieferanten aus den Artikeln. Supermarkt gilt als Laden vor Ort. */
+function shopTerms(stored: ShopTerms[], products: Product[]): ShopTerms[] {
+  const byName = new Map(stored.map((t) => [t.name, t]))
+  for (const p of products) {
+    const name = p.supplier ?? 'Sonstige'
+    if (!byName.has(name)) byName.set(name, { name, ...(name === SUPERMARKET && { local: true }) })
+  }
+  return [...byName.values()].sort((a, b) => Number(!!a.local) - Number(!!b.local) || a.name.localeCompare(b.name, 'de'))
+}
+
+/** „43,33 € + 5,90 € Versand“ */
+function costLine(o: ShopOrder): string {
+  const extras = [o.shipping > 0 && `${fmt(o.shipping, 2)} € Versand`, o.fee > 0 && `${fmt(o.fee, 2)} € Gebühr`, o.minimumGap > 0 && `${fmt(o.minimumGap, 2)} € bis Mindestbestellwert`].filter(Boolean)
+  return [`${fmt(o.subtotal, 2)} €`, ...extras].join(' + ')
+}
+
+/** Bestellungen je Shop mit Nebenkosten, unter den Vorschlägen. */
+function OrderSummary({ orders }: { orders: ShopOrder[] }) {
+  if (!orders.length) return null
+  const total = orders.reduce((s, o) => s + o.total, 0)
+  return (
+    <ul className="mt-3 space-y-1.5 border-t border-line pt-3 text-sm">
+      {orders.map((o) => (
+        <li key={o.shop} className="flex flex-wrap justify-between gap-x-3">
+          <span>
+            <span className="font-medium">{o.shop}</span>
+            <span className="text-muted"> · {costLine(o)}</span>
+            {o.unknownShipping && <span className="text-warn"> · Versandkosten fehlen (rechts unter „Shops“)</span>}
+          </span>
+          <span className="tabular-nums">{fmt(o.total, 2)} €</span>
+        </li>
+      ))}
+      <li className="flex justify-between gap-3 font-semibold">
+        <span>Gesamt inkl. Versand</span>
+        <span className="tabular-nums">{fmt(total, 2)} €</span>
+      </li>
+    </ul>
+  )
+}
+
+/** Versandkosten und Gebühren je Shop; leer lassen, was unbekannt ist. */
+function ShopSettings({ terms }: { terms: ShopTerms[] }) {
+  const save = (t: ShopTerms, patch: Partial<ShopTerms>) => db.shops.put({ ...t, ...patch })
+  const field = (t: ShopTerms, key: 'shipping' | 'freeShippingFrom' | 'minOrder' | 'paymentFee', label: string) => (
+    <label className="label text-xs">
+      {label}
+      <NumberField value={t[key]} digits={2} suffix="€" ariaLabel={`${t.name}: ${label}`} onChange={(v) => save(t, { [key]: v })} />
+    </label>
+  )
+  return (
+    <Panel title="Shops" icon={Store}>
+      <p className="mb-3 text-xs text-muted">Damit der Einkauf entscheiden kann, ob sich Aufteilen lohnt. Steht meist unter „Versand“ im Shop.</p>
+      <ul className="space-y-4">
+        {terms.map((t) => (
+          <li key={t.name} className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">{t.name}</span>
+              <label className="flex min-h-11 items-center gap-2 text-sm text-muted">
+                <input type="checkbox" className="size-5 accent-[var(--color-accent)]" checked={!!t.local} onChange={(e) => save(t, { local: e.target.checked })} />
+                Laden vor Ort
+              </label>
+            </div>
+            {!t.local && (
+              <div className="grid grid-cols-2 gap-2">
+                {field(t, 'shipping', 'Versand')}
+                {field(t, 'freeShippingFrom', 'Versandfrei ab')}
+                {field(t, 'minOrder', 'Mindestbestellwert')}
+                {field(t, 'paymentFee', 'Gebühr je Bestellung')}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
   )
 }

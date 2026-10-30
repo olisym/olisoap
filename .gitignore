@@ -23,5 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 
-# Beispiel-Katalog für den Demo-Link: nur auf dem Server, nie im Repository
-public/demo/

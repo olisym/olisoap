@@ -6,6 +6,7 @@ import { packageGrams, pricePerKg, type Inventory, type Lot, type Product, type 
 import type { RecipeInput } from './core/types'
 import { TEMPLATES, type TemplateFamily } from './data/templates'
 import { findDuplicateRecipes } from './core/dedupe'
+import type { ShopTerms } from './core/shops'
 import { purchaseId } from './import/salandia'
 
 export interface Recipe {
@@ -103,6 +104,7 @@ export const db = new Dexie('olisoap') as Dexie & {
   batches: EntityTable<Batch, 'id'>
   orderItems: EntityTable<OrderItem, 'id'>
   settings: EntityTable<Setting, 'key'>
+  shops: EntityTable<ShopTerms, 'name'>
 }
 
 /** Einstellungen als Schlüssel-Wert-Paare, z. B. das Etikett-Design. Liegen in der Datenbank, damit sie mit gesichert werden. */
@@ -185,6 +187,9 @@ db.version(6)
       }),
     )
   })
+
+// Shops mit Versandkosten und Gebühren für den Einkauf über mehrere Anbieter.
+db.version(7).stores({ shops: 'name' })
 
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
@@ -291,7 +296,7 @@ export async function receiveOrderItem(item: OrderItem, unitPrice: number | unde
 
 export interface Backup {
   app: 'olisoap'
-  version: 5
+  version: number
   exportedAt: string
   recipes: Recipe[]
   products: Product[]
@@ -300,19 +305,21 @@ export interface Backup {
   batches: Batch[]
   orderItems: OrderItem[]
   settings: Setting[]
+  shops?: ShopTerms[]
 }
 
-const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches', 'orderItems', 'settings'] as const
+const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches', 'orderItems', 'settings', 'shops'] as const
 
 export async function exportBackup(): Promise<Backup> {
   return {
     app: 'olisoap',
-    version: 5,
+    version: 7,
     exportedAt: new Date().toISOString(),
     recipes: await db.recipes.toArray(),
     batches: await db.batches.toArray(),
     orderItems: await db.orderItems.toArray(),
     settings: await db.settings.toArray(),
+    shops: await db.shops.toArray(),
     ...(await loadInventory()),
   }
 }
@@ -321,7 +328,7 @@ export async function exportBackup(): Promise<Backup> {
 export async function importBackup(data: unknown): Promise<Record<(typeof TABLES)[number], number>> {
   const backup = data as Partial<Backup>
   if (backup?.app !== 'olisoap' || !Array.isArray(backup.recipes)) throw new Error('Keine gültige olisoap-Sicherung.')
-  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0, orderItems: 0, settings: 0 }
+  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0, orderItems: 0, settings: 0, shops: 0 }
   await db.transaction('rw', TABLES, async () => {
     for (const t of TABLES) {
       const rows = (backup[t] ?? []) as never[]

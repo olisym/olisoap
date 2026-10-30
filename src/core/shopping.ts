@@ -1,4 +1,5 @@
 import type { Need } from './batch'
+import { optimizeShops, type ShopTerms } from './shops'
 import { bestProduct, materialKey, materialStock, offerPrice, packageGrams, pricePerKg, type Inventory, type MaterialKey, type Product } from './inventory'
 
 export { bestProduct }
@@ -7,7 +8,8 @@ export { bestProduct }
 
 /**
  * - `perKg`: eine Packungsgröße mit dem besten Preis pro kg (Vorrat für später, Rest bleibt übrig)
- * - `total`: Kombination von Packungen derselben Produktlinie mit der kleinsten Summe für genau diesen Bedarf
+ * - `total`: kleinste Gesamtsumme für genau diesen Bedarf: Packungen derselben Produktlinie kombiniert, über alle Shops
+ *   verteilt, Versand und Gebühren eingerechnet (siehe shops.ts)
  */
 export type ShoppingMode = 'perKg' | 'total'
 
@@ -49,7 +51,7 @@ export function productLine(name: string): string {
     .trim()
 }
 
-interface Pack {
+export interface Pack {
   product: Product
   grams: number
   price: number
@@ -96,7 +98,7 @@ export function cheapestCover(packs: Pack[], need: number): { lines: { pack: Pac
  * Packungen derselben Produktlinie wie der Vorschlag (gleiche Qualität, andere Größen und Gebinde).
  * Gibt es aktuelle Preise (jünger als ein Jahr), zählen nur diese: ein alter Einkaufspreis ist kein Angebot mehr.
  */
-function linePacks(inv: Inventory, key: MaterialKey, best: Product, today: string): Pack[] {
+export function linePacks(inv: Inventory, key: MaterialKey, best: Product, today: string): Pack[] {
   const line = productLine(best.name)
   const cutoff = `${Number(today.slice(0, 4)) - 1}${today.slice(4)}`
   const packs = inv.products
@@ -109,7 +111,15 @@ function linePacks(inv: Inventory, key: MaterialKey, best: Product, today: strin
   return packs.some((p) => p.current) ? packs.filter((p) => p.current) : packs
 }
 
-export function planShopping(inv: Inventory, needs: Need[], mode: ShoppingMode = 'perKg', today = new Date().toISOString().slice(0, 10)): ShoppingSuggestion[] {
+export function planShopping(
+  inv: Inventory,
+  needs: Need[],
+  mode: ShoppingMode = 'perKg',
+  today = new Date().toISOString().slice(0, 10),
+  shops: ShopTerms[] = [],
+): ShoppingSuggestion[] {
+  // Nur was gebraucht wird: über alle Shops verteilen, Versand und Gebühren eingerechnet.
+  if (mode === 'total') return optimizeShops(inv, needs, shops, today)
   return mergeNeeds(needs)
     .map((need): ShoppingSuggestion | undefined => {
       const shortfall = need.grams - materialStock(inv, need.key)
@@ -120,18 +130,6 @@ export function planShopping(inv: Inventory, needs: Need[], mode: ShoppingMode =
       const unitPrice = offerPrice(inv, product)?.unitPrice
       const perKg = unitPrice !== undefined ? pricePerKg(product, unitPrice) : undefined
 
-      if (mode === 'total') {
-        const cover = cheapestCover(linePacks(inv, need.key, product, today), shortfall)
-        if (cover)
-          return {
-            need,
-            shortfall,
-            lines: cover.lines.map((l) => ({ product: l.pack.product, packages: l.count, unitPrice: l.pack.price })),
-            total: cover.price,
-            leftover: cover.grams - shortfall,
-            pricePerKg: (cover.price / cover.grams) * 1000,
-          }
-      }
       const packages = Math.ceil(shortfall / grams)
       return {
         need,

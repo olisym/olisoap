@@ -24,7 +24,8 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
     abgezogen), Säuren verbrauchen Lauge, Kennzahlen nach SoapCalc-Konvention (Heuristik, so kennzeichnen)
   - `correction.ts` Ist-Einwaage → nachgeben, `evaluate.ts` Prüfregeln/Zielprofile, `inventory.ts` Artikel/Gebinde/Preise,
     `cost.ts`, `batch.ts` Chargen/Verbrauch/Reifung, `tasks.ts` „Heute zu tun“, `label.ts` Zutatenliste/INCI,
-    `shopping.ts` Einkaufsplanung, `weights.ts` Gewichte aus Diktat
+    `shopping.ts` Einkaufsplanung, `shops.ts` Shops mit Nebenkosten und Verteilung des Bedarfs auf mehrere Shops,
+    `weights.ts` Gewichte aus Diktat
 - `src/data/`: Fette (Verseifungszahl in mg KOH/g, Fettsäuren, Jodzahl, INCI), Zusätze inkl. ätherische Öle, Zielprofile,
   Vorlagen (Grundseifen Körper/Haar/Rasur je mit Spar-Variante).
 - `src/import/`: Salandia-Bestellübersicht und Salandia-Katalog (automatische Erkennung).
@@ -56,10 +57,13 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
 
 - Cremes/Emulsionen-Kern (Aftershave-Balsam als erstes Produkt), dann wasserfreie Produkte (Balsam, Bartwachs, Massageöl,
   Deo), Tinkturen (Myrrhe, Weihrauch). Haltbarkeit fertiger Produkte, „Retten“ ablaufender Zutaten.
-- Olivenöl, Sonnenblumenöl HO u. Ä. kauft der Nutzer im Supermarkt (Einkauf: „Kaufe ich im Supermarkt“, Liste nach Shop
-  gruppiert). Salandia bleibt Hauptshop für Spezialitäten; App bleibt shopunabhängig (weitere Importe möglich).
-- Später, falls die App für andere geöffnet wird: Affiliate/Warenkorb-Übergabe denkbar (gekennzeichnet, Vorschläge
-  dürfen dadurch nicht verbogen werden). Kein Hauptziel. Hauptziel: eigenes Sieden optimieren, Verluste durch Ranzigwerden
-  vermeiden; Einsteigern helfen ist willkommen.
+- Einkauf ist **shopunabhängig** (Salandia: kein Feed, kein Affiliate-Programm, Antwort freundlich, „melden, wenn es
+  Reichweite gibt“). Shops (`db.shops`) mit Versand, versandfrei ab, Mindestbestellwert, Gebühr, „Laden vor Ort“; Modus
+  „Nur was gebraucht wird“ optimiert über alle Shops inkl. Nebenkosten. Supermarkt-Ware: „Kaufe ich im Supermarkt“.
+- Nächste Stufe: Preise aus beliebigen Shops importieren (ein JSON-Format für alle, Prompt für Claude in Chrome
+  verallgemeinern, Schnelleingabe „Preis gesehen“), evtl. eBay-API. Keine fremden Shop-Daten zentral verteilen
+  (Demo nutzt erfundene Beispiel-Shops, `src/demo/catalog.ts`). Keine allgemeine Einkaufs-App bauen (Scope).
+- Hauptziel: eigenes Sieden optimieren, Verluste durch Ranzigwerden vermeiden; Einsteigern helfen ist willkommen.
+  Affiliate allenfalls später, gekennzeichnet, ohne Vorschläge zu verbiegen.
 - Ätherische Öle: Dosierung, Allergene (Deklaration ab 0,01 % in Rinse-off).
 - Reste-Optimierer („Entwickeln“), Mindestbestände, Barcode.
