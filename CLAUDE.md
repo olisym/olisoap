@@ -65,6 +65,9 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
   Vorlieben je Shop (bevorzugt = bis 10 % teurer ok, meiden = nur wenn einzige Quelle), „Aufwand je weitere Bestellung“
   (Einstellung `extraOrderCost`). Eigene Sudgröße `batchFat` (Nutzer: 2-kg-Kastenform) gilt für Seife am Stück
   (`atBatchSize`, nicht für Tiegel/Mischlauge). Einkauf: „Was kostet ein Sud jetzt?“ sortiert Rezepte nach Ausgabe heute.
+  Haltbarkeit (`shelfLife.ts`, Faustregel aus Anteil mehrfach ungesättigter Fettsäuren, ein Sud alle 2 Monate):
+  Vorrats-Modus kauft nicht mehr, als in der Haltbarkeit verbraucht wird; Hinweis „hält geöffnet ca. … Monate“.
+  Mit echten Katalogen (Dragonspice, Salandia, Manske, Eulenhof, je 300–1700 Artikel) getestet; Dateien nur lokal.
 - Shop-Katalog-Import für beliebige Shops ist da. Offen: Schnelleingabe „Preis gesehen“ (Link, Preis, Größe), evtl. eBay-API. Keine fremden Shop-Daten zentral verteilen
   (Demo nutzt erfundene Beispiel-Shops, `src/demo/catalog.ts`). Keine allgemeine Einkaufs-App bauen (Scope).
 - Hauptziel: eigenes Sieden optimieren, Verluste durch Ranzigwerden vermeiden; Einsteigern helfen ist willkommen.
