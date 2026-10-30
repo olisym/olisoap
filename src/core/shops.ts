@@ -2,14 +2,16 @@ import type { Need } from './batch'
 import { bestProduct, materialStock, offerPrice, packageGrams, type Inventory, type MaterialKey, type Product } from './inventory'
 import { cheapestCover, linePacks, mergeNeeds, type ShoppingLine, type ShoppingSuggestion } from './shopping'
 
-// Einkauf über mehrere Shops: Jeder Shop hat Nebenkosten (Versand, versandkostenfrei ab, Mindestbestellwert,
-// Zahlungsgebühr). Gesucht ist die Verteilung des Bedarfs auf die Shops mit der kleinsten Gesamtsumme.
+// Einkauf über mehrere Shops: Jeder Shop hat Nebenkosten (Versand pauschal oder nach Gewicht, versandkostenfrei ab,
+// Mindestbestellwert, Zahlungsgebühr). Gesucht ist die Verteilung des Bedarfs auf die Shops mit der kleinsten Gesamtsumme.
 
 export interface ShopTerms {
   /** Entspricht `Product.supplier`. */
   name: string
   /** Versandkosten in €. Fehlt = unbekannt (wird als 0 gerechnet und gemeldet). */
   shipping?: number
+  /** Versand nach Paketgewicht, aufsteigend: bis `maxKg` kostet es `eur`. Hat Vorrang vor `shipping`. */
+  shippingByWeight?: { maxKg: number; eur: number }[]
   /** Ab diesem Warenwert versandkostenfrei. */
   freeShippingFrom?: number
   /** Unter diesem Warenwert wird die Differenz als Aufschlag gerechnet (man müsste ohnehin mehr kaufen). */
@@ -30,12 +32,30 @@ export interface ShopOrder {
   total: number
   /** Versandkosten nicht hinterlegt. */
   unknownShipping: boolean
+  /** Geschätztes Paketgewicht in kg (Inhalt plus Verpackung). */
+  weightKg: number
 }
 
-/** Nebenkosten einer Bestellung bei einem Shop. */
-export function shopCosts(subtotal: number, terms: ShopTerms | undefined, name: string): ShopOrder {
+/** Verpackung, Gläser und Kanister: grob 15 % auf das Inhaltsgewicht. */
+const PACKAGING_FACTOR = 1.15
+
+/** Paketgewicht in kg aus dem Inhalt in g. */
+export const parcelKg = (contentGrams: number) => (contentGrams * PACKAGING_FACTOR) / 1000
+
+/** Versand nach Gewichtsstufe; schwerer als die höchste Stufe heißt mehrere Pakete. */
+function weightShipping(tiers: { maxKg: number; eur: number }[], kg: number): number {
+  const sorted = [...tiers].sort((a, b) => a.maxKg - b.maxKg)
+  const tier = sorted.find((t) => kg <= t.maxKg)
+  if (tier) return tier.eur
+  const last = sorted[sorted.length - 1]
+  return Math.ceil(kg / last.maxKg) * last.eur
+}
+
+/** Nebenkosten einer Bestellung bei einem Shop. `weightKg`: geschätztes Paketgewicht (für Versand nach Gewicht). */
+export function shopCosts(subtotal: number, terms: ShopTerms | undefined, name: string, weightKg = 0): ShopOrder {
   const free = terms?.local || (terms?.freeShippingFrom !== undefined && subtotal >= terms.freeShippingFrom)
-  const shipping = free ? 0 : (terms?.shipping ?? 0)
+  const tiers = terms?.shippingByWeight?.length ? terms.shippingByWeight : undefined
+  const shipping = free ? 0 : tiers ? weightShipping(tiers, weightKg) : (terms?.shipping ?? 0)
   const fee = terms?.paymentFee ?? 0
   const minimumGap = terms?.minOrder !== undefined ? Math.max(0, terms.minOrder - subtotal) : 0
   return {
@@ -45,7 +65,8 @@ export function shopCosts(subtotal: number, terms: ShopTerms | undefined, name: 
     fee,
     minimumGap,
     total: subtotal + shipping + fee + minimumGap,
-    unknownShipping: !terms?.local && terms?.shipping === undefined,
+    unknownShipping: !terms?.local && terms?.shipping === undefined && !tiers,
+    weightKg,
   }
 }
 
@@ -54,10 +75,15 @@ const shopOf = (p: Product) => p.supplier ?? 'Sonstige'
 /** Bestellungen je Shop aus fertigen Vorschlägen (für beide Einkaufs-Modi). */
 export function summarizeOrders(suggestions: ShoppingSuggestion[], shops: ShopTerms[]): ShopOrder[] {
   const subtotals = new Map<string, number>()
+  const grams = new Map<string, number>()
   for (const s of suggestions)
-    for (const l of s.lines) subtotals.set(shopOf(l.product), (subtotals.get(shopOf(l.product)) ?? 0) + (l.unitPrice ?? 0) * l.packages)
+    for (const l of s.lines) {
+      const shop = shopOf(l.product)
+      subtotals.set(shop, (subtotals.get(shop) ?? 0) + (l.unitPrice ?? 0) * l.packages)
+      grams.set(shop, (grams.get(shop) ?? 0) + (packageGrams(l.product) ?? 0) * l.packages)
+    }
   const terms = new Map(shops.map((t) => [t.name, t]))
-  return [...subtotals].map(([name, sub]) => shopCosts(sub, terms.get(name), name))
+  return [...subtotals].map(([name, sub]) => shopCosts(sub, terms.get(name), name, parcelKg(grams.get(name) ?? 0)))
 }
 
 interface Option {
@@ -92,9 +118,13 @@ function optionsFor(inv: Inventory, key: MaterialKey, shortfall: number, today: 
 /** Gesamtkosten einer Zuordnung Material → Option inklusive Nebenkosten aller beteiligten Shops. */
 function assignmentCost(choice: Option[], terms: Map<string, ShopTerms>): number {
   const subtotals = new Map<string, number>()
-  for (const o of choice) subtotals.set(o.shop, (subtotals.get(o.shop) ?? 0) + (o.cost ?? 0))
+  const grams = new Map<string, number>()
+  for (const o of choice) {
+    subtotals.set(o.shop, (subtotals.get(o.shop) ?? 0) + (o.cost ?? 0))
+    grams.set(o.shop, (grams.get(o.shop) ?? 0) + o.grams)
+  }
   let total = 0
-  for (const [shop, sub] of subtotals) total += shopCosts(sub, terms.get(shop), shop).total
+  for (const [shop, sub] of subtotals) total += shopCosts(sub, terms.get(shop), shop, parcelKg(grams.get(shop) ?? 0)).total
   return Math.round(total * 100) / 100
 }
 

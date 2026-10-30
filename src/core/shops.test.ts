@@ -26,6 +26,15 @@ describe('Nebenkosten', () => {
     expect(shopCosts(10, undefined, 'X').unknownShipping).toBe(true)
     expect(shopCosts(10, { name: 'Laden', local: true }, 'Laden')).toMatchObject({ shipping: 0, unknownShipping: false })
   })
+
+  it('Versand nach Gewicht: Stufe, mehrere Pakete, Freigrenze hat Vorrang', () => {
+    const t: ShopTerms = { name: 'M', shippingByWeight: [{ maxKg: 30, eur: 10.71 }, { maxKg: 10, eur: 5.95 }], freeShippingFrom: 400 }
+    expect(shopCosts(50, t, 'M', 3).shipping).toBe(5.95)
+    expect(shopCosts(50, t, 'M', 12).shipping).toBe(10.71)
+    expect(shopCosts(50, t, 'M', 45).shipping).toBeCloseTo(21.42)
+    expect(shopCosts(450, t, 'M', 45).shipping).toBe(0)
+    expect(shopCosts(50, t, 'M', 3).unknownShipping).toBe(false)
+  })
 })
 
 describe('Einkauf über mehrere Shops', () => {
@@ -61,6 +70,15 @@ describe('Einkauf über mehrere Shops', () => {
     const s = optimizeShops(inv(products), [need('shea', 400), need('olive', 300)], [...shops, { name: 'Supermarkt', local: true }], today)
     expect(shopOfLines(s)).toEqual({ shea: 'A', olive: 'Supermarkt' })
     expect(summarizeOrders(s, [...shops, { name: 'Supermarkt', local: true }]).find((o) => o.shop === 'Supermarkt')?.total).toBe(0)
+  })
+
+  it('rechnet schwere Bestellungen bei Versand nach Gewicht teurer', () => {
+    // 5 kg NaOH: bei A pauschal 5,90, bei W nach Gewicht (über 5 kg: 10,50). W ist 3 € billiger in der Ware.
+    const products = [item('a-naoh', 'A', 'naoh', 5000, 30), item('w-naoh', 'W', 'naoh', 5000, 27)]
+    const terms: ShopTerms[] = [{ name: 'A', shipping: 5.9 }, { name: 'W', shippingByWeight: [{ maxKg: 2, eur: 5 }, { maxKg: 10, eur: 10.5 }] }]
+    const s = optimizeShops(inv(products), [need('naoh', 4500)], terms, today)
+    expect(shopOfLines(s).naoh).toBe('A')
+    expect(summarizeOrders(s, terms)[0].weightKg).toBeCloseTo(5.75)
   })
 
   it('berücksichtigt den Mindestbestellwert', () => {

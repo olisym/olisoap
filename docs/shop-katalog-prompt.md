@@ -34,7 +34,8 @@ Erstelle für olisoap, meine Werkstatt-App für Seife und Kosmetik, einen Katalo
 Nur für meinen eigenen Gebrauch. Arbeite die Seiten ruhig nacheinander ab, nicht parallel.
 
 1. Versandbedingungen (Seite „Versand“, „Versandkosten“ oder „Lieferung“, meist im Footer):
-   Standardversand innerhalb Deutschlands in €, versandkostenfrei ab (Warenwert in €), Mindestbestellwert in €,
+   Standardversand innerhalb Deutschlands in €; hängt er vom Paketgewicht ab, stattdessen die Stufen als
+   "versand_staffel" (bis kg → €) und "versand_eur": null. Versandkostenfrei ab (Warenwert in €), Mindestbestellwert in €,
    feste Gebühr je Bestellung (nur wenn sie immer anfällt, sonst null). Zuschläge oder Besonderheiten
    (z. B. Gefahrgut, Sperrgut, Nachnahme) kurz unter "hinweise".
 
@@ -69,6 +70,7 @@ Nur für meinen eigenen Gebrauch. Arbeite die Seiten ruhig nacheinander ab, nich
     "name": "Shopname",
     "url": "https://…",
     "versand_eur": 4.90,
+    "versand_staffel": null,
     "versandfrei_ab_eur": 49.00,
     "mindestbestellwert_eur": null,
     "gebuehr_eur": null,
@@ -88,6 +90,8 @@ Nur für meinen eigenen Gebrauch. Arbeite die Seiten ruhig nacheinander ab, nich
     }
   ]
 }
+
+Beispiel für Versand nach Gewicht: "versand_eur": null, "versand_staffel": [{ "bis_kg": 10, "eur": 5.95 }, { "bis_kg": 30, "eur": 10.71 }]
 
 Zum Schluss kurz berichten: Anzahl Artikel je "art", welche Bereiche du nicht gefunden hast und was unklar war.
 ```

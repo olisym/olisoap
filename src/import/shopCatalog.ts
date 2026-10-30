@@ -30,6 +30,8 @@ export interface ShopCatalog {
     name: string
     url?: string | null
     versand_eur?: number | null
+    /** Versand nach Gewicht, z. B. [{ "bis_kg": 10, "eur": 5.95 }, { "bis_kg": 30, "eur": 10.71 }]. */
+    versand_staffel?: { bis_kg: number; eur: number }[] | null
     versandfrei_ab_eur?: number | null
     mindestbestellwert_eur?: number | null
     gebuehr_eur?: number | null
@@ -73,6 +75,10 @@ export function importShopCatalog(data: ShopCatalog, existing: Product[], stored
     ...storedShop,
     name: supplier,
     ...(num(s.versand_eur) !== undefined && { shipping: num(s.versand_eur) }),
+    ...(Array.isArray(s.versand_staffel) &&
+      s.versand_staffel.length > 0 && {
+        shippingByWeight: s.versand_staffel.filter((t) => num(t?.bis_kg) && num(t?.eur) !== undefined).map((t) => ({ maxKg: t.bis_kg, eur: t.eur })),
+      }),
     ...(num(s.versandfrei_ab_eur) !== undefined && { freeShippingFrom: num(s.versandfrei_ab_eur) }),
     ...(num(s.mindestbestellwert_eur) !== undefined && { minOrder: num(s.mindestbestellwert_eur) }),
     ...(num(s.gebuehr_eur) !== undefined && { paymentFee: num(s.gebuehr_eur) }),

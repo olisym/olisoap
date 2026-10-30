@@ -8,7 +8,7 @@ import { needsOf } from '../core/batch'
 import { calculate } from '../core/calc'
 import { CATEGORY_LABELS, materialKey, offerPrice, packageGrams, type Product } from '../core/inventory'
 import { planShopping, type ShoppingMode, type ShoppingSuggestion } from '../core/shopping'
-import { shopCosts, summarizeOrders, type ShopOrder, type ShopTerms } from '../core/shops'
+import { parcelKg, shopCosts, summarizeOrders, type ShopOrder, type ShopTerms } from '../core/shops'
 import type { Need } from '../core/batch'
 import { db, receiveOrderItem, type OrderItem } from '../db'
 import { fmt } from '../format'
@@ -186,7 +186,7 @@ export function Shopping() {
             open.length > 0 && (
               <span className="text-lg font-semibold tabular-nums">
                 {fmt(openTotal + bySupplier(open, byId).reduce((sum, [shop, items]) => {
-                  const c = shopCosts(items.reduce((a, o) => a + (o.unitPrice ?? 0) * o.packages, 0), terms.find((t) => t.name === shop), shop)
+                  const c = listCosts(items, shop, byId, terms)
                   return sum + c.shipping + c.fee
                 }, 0), 2)}{' '}
                 €
@@ -205,7 +205,7 @@ export function Shopping() {
                   <section key={supplier} aria-label={supplier}>
                     <h3 className="eyebrow mb-2 flex justify-between gap-3">
                       <span>{supplier}</span>
-                      <span className="tabular-nums">{costLine(shopCosts(items.reduce((sum, o) => sum + (o.unitPrice ?? 0) * o.packages, 0), terms.find((t) => t.name === supplier), supplier))}</span>
+                      <span className="tabular-nums">{costLine(listCosts(items, supplier, byId, terms))}</span>
                     </h3>
                     <ul className="space-y-2">
                       {items.map((o) => (
@@ -454,9 +454,19 @@ function shopTerms(stored: ShopTerms[], products: Product[]): ShopTerms[] {
   return [...byName.values()].sort((a, b) => Number(!!a.local) - Number(!!b.local) || a.name.localeCompare(b.name, 'de'))
 }
 
+/** Nebenkosten der offenen Posten eines Shops (Gewicht aus den Packungsgrößen). */
+function listCosts(items: OrderItem[], shop: string, byId: Map<string, Product>, terms: ShopTerms[]): ShopOrder {
+  const subtotal = items.reduce((a, o) => a + (o.unitPrice ?? 0) * o.packages, 0)
+  const grams = items.reduce((a, o) => {
+    const p = byId.get(o.productId)
+    return a + (p ? (packageGrams(p) ?? 0) : 0) * o.packages
+  }, 0)
+  return shopCosts(subtotal, terms.find((t) => t.name === shop), shop, parcelKg(grams))
+}
+
 /** „43,33 € + 5,90 € Versand“ */
 function costLine(o: ShopOrder): string {
-  const extras = [o.shipping > 0 && `${fmt(o.shipping, 2)} € Versand`, o.fee > 0 && `${fmt(o.fee, 2)} € Gebühr`, o.minimumGap > 0 && `${fmt(o.minimumGap, 2)} € bis Mindestbestellwert`].filter(Boolean)
+  const extras = [o.shipping > 0 && `${fmt(o.shipping, 2)} € Versand${o.weightKg >= 0.05 ? ` (ca. ${fmt(o.weightKg, 1)} kg)` : ''}`, o.fee > 0 && `${fmt(o.fee, 2)} € Gebühr`, o.minimumGap > 0 && `${fmt(o.minimumGap, 2)} € bis Mindestbestellwert`].filter(Boolean)
   return [`${fmt(o.subtotal, 2)} €`, ...extras].join(' + ')
 }
 
@@ -507,16 +517,50 @@ function ShopSettings({ terms }: { terms: ShopTerms[] }) {
               </label>
             </div>
             {!t.local && (
-              <div className="grid grid-cols-2 gap-2">
-                {field(t, 'shipping', 'Versand')}
-                {field(t, 'freeShippingFrom', 'Versandfrei ab')}
-                {field(t, 'minOrder', 'Mindestbestellwert')}
-                {field(t, 'paymentFee', 'Gebühr je Bestellung')}
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {t.shippingByWeight?.length ? (
+                    <p className="label text-xs">
+                      Versand
+                      <span className="flex min-h-11 items-center text-sm text-ink">nach Gewicht, siehe unten</span>
+                    </p>
+                  ) : (
+                    field(t, 'shipping', 'Versand')
+                  )}
+                  {field(t, 'freeShippingFrom', 'Versandfrei ab')}
+                  {field(t, 'minOrder', 'Mindestbestellwert')}
+                  {field(t, 'paymentFee', 'Gebühr je Bestellung')}
+                </div>
+                <WeightTiers terms={t} onChange={(shippingByWeight) => save(t, { shippingByWeight })} />
+              </>
             )}
           </li>
         ))}
       </ul>
     </Panel>
+  )
+}
+
+/** Versand nach Gewicht: Stufen „bis … kg → … €“. Ohne Stufen gilt der pauschale Versand. */
+function WeightTiers({ terms, onChange }: { terms: ShopTerms; onChange: (tiers: ShopTerms['shippingByWeight']) => void }) {
+  const tiers = terms.shippingByWeight ?? []
+  const set = (i: number, patch: Partial<{ maxKg: number; eur: number }>) => onChange(tiers.map((t, j) => (j === i ? { ...t, ...patch } : t)))
+  return (
+    <div className="space-y-1">
+      {tiers.length > 0 && <p className="text-xs text-muted">Versand nach Gewicht</p>}
+      {tiers.map((t, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span className="text-muted">bis</span>
+          <NumberField className="w-20" value={t.maxKg} digits={1} suffix="kg" ariaLabel={`${terms.name}: Stufe ${i + 1} bis kg`} onChange={(v) => set(i, { maxKg: v ?? 0 })} />
+          <NumberField className="w-24" value={t.eur} digits={2} suffix="€" ariaLabel={`${terms.name}: Stufe ${i + 1} Preis`} onChange={(v) => set(i, { eur: v ?? 0 })} />
+          <button className="btn-icon" aria-label="Stufe entfernen" onClick={() => onChange(tiers.length > 1 ? tiers.filter((_, j) => j !== i) : undefined)}>
+            <X size={16} />
+          </button>
+        </div>
+      ))}
+      <button className="btn-ghost text-sm" onClick={() => onChange([...tiers, { maxKg: (tiers.at(-1)?.maxKg ?? 0) + 10, eur: tiers.at(-1)?.eur ?? terms.shipping ?? 5 }])}>
+        <Plus size={16} /> {tiers.length ? 'Weitere Stufe' : 'Versand nach Gewicht'}
+      </button>
+    </div>
   )
 }
