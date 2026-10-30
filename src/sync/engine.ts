@@ -15,6 +15,7 @@ const SYNCED: Record<string, string> = {
   batches: 'id',
   orderItems: 'id',
   settings: 'key',
+  shops: 'name',
 }
 
 /** Obergrenze je verschlüsseltem Datensatz, knapp unter der Grenze der Sync-API (4 MB). */
@@ -28,6 +29,7 @@ const TABLE_NAMES: Record<string, string> = {
   batches: 'Charge',
   orderItems: 'Bestellposten',
   settings: 'Einstellung',
+  shops: 'Shop',
 }
 
 interface Account {

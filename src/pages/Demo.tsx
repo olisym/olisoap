@@ -1,14 +1,13 @@
+import { FlaskConical } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EmptyState } from '../components/ui'
-import { db } from '../db'
-import { importSalandiaCatalog, isCatalog } from '../import/salandiaCatalog'
+import { DEMO_SHOPS, demoCatalog } from '../demo/catalog'
 import { loadDemoScenario } from '../demo/scenario'
-import { FlaskConical } from 'lucide-react'
+import { db } from '../db'
 
-// Demo-Link (#/demo): lädt einen Beispiel-Katalog und eine Beispiel-Werkstatt (Vorrat, Chargen, Einkauf) und öffnet die Übersicht.
-// Die Datei demo/katalog.json liegt nur auf dem Server, nicht im Repository (keine gescrapten Kataloge im Repo).
-// Vorhandene Daten werden nie angefasst: Gibt es schon Artikel, wird nichts importiert.
+// Demo-Link (#/demo): legt erfundene Beispiel-Shops und eine Beispiel-Werkstatt (Vorrat, Chargen, Einkauf) an
+// und öffnet die Übersicht. Vorhandene Daten werden nie angefasst: Gibt es schon Artikel, passiert nichts.
 
 export function Demo() {
   const navigate = useNavigate()
@@ -18,11 +17,10 @@ export function Demo() {
     void (async () => {
       try {
         if ((await db.products.count()) === 0) {
-          const res = await fetch(`${import.meta.env.BASE_URL}demo/katalog.json`)
-          const data = res.ok ? await res.json() : undefined
-          if (!isCatalog(data)) throw new Error('Auf diesem Server liegen keine Beispieldaten.')
-          await db.products.bulkAdd(importSalandiaCatalog(data, []).products)
-          await loadDemoScenario()
+          const today = new Date().toISOString().slice(0, 10)
+          await db.shops.bulkPut(DEMO_SHOPS)
+          await db.products.bulkAdd(demoCatalog(await db.recipes.toArray(), today))
+          await loadDemoScenario(today)
         }
         navigate('/', { replace: true })
       } catch (e) {
@@ -36,6 +34,6 @@ export function Demo() {
       {error}
     </EmptyState>
   ) : (
-    <p className="text-muted">Beispieldaten werden geladen …</p>
+    <p className="text-muted">Beispieldaten werden angelegt …</p>
   )
 }
