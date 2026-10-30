@@ -1,11 +1,12 @@
 <IfModule mod_headers.c>
-# Service Worker und Startseite nie zwischenspeichern, damit Updates sofort ankommen.
-<FilesMatch "^(sw\.js|index\.html|manifest\.webmanifest|registerSW\.js)$">
-  Header set Cache-Control "no-cache"
-</FilesMatch>
 # Gebaute Dateien haben einen Hash im Namen und dürfen lange gecacht werden.
 <FilesMatch "\.(js|css|png|svg|woff2)$">
   Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+# Service Worker, Startseite und Versionsdatei nie zwischenspeichern, damit Updates sofort ankommen.
+# Muss nach der Regel oben stehen, sonst gilt für sw.js und registerSW.js „ein Jahr cachen“.
+<FilesMatch "^(sw\.js|index\.html|manifest\.webmanifest|registerSW\.js|version\.json)$">
+  Header set Cache-Control "no-cache"
 </FilesMatch>
 Header set X-Content-Type-Options "nosniff"
 Header set Referrer-Policy "same-origin"

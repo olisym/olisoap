@@ -46,8 +46,9 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
 - Sync-API: Datensatz-Kennungen **≤ 100 Zeichen**, Datensätze ≤ 4 MB verschlüsselt. Feste Kennungen (z. B. aus Importen)
   hashen statt Namen einbauen. Vorlagen haben feste Kennungen (`vorlage-…`), doppelte unveränderte Rezepte räumt
   `removeDuplicateRecipes` nach jedem Abgleich auf.
-- Sync-Seite zeigt „App-Version <hash>“ = „Build <hash>“ im Branch `deploy`/Plesk. Plesk zieht ggf. verzögert
-  („Jetzt abrufen“).
+- Versionen: `version.json` (Build-Hash) neben der App; `src/version.ts` vergleicht laufende Version, Server und
+  Branch `deploy` auf GitHub → Leiste zeigt „Update“ bzw. „Server veraltet“ (Plesk zieht ggf. verzögert, „Jetzt
+  abrufen“). Service Worker im Modus `prompt`. `.htaccess`: no-cache-Regel muss nach der immutable-Regel stehen.
 
 ## Arbeitsweise
 
