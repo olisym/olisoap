@@ -28,7 +28,8 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
     `weights.ts` Gewichte aus Diktat
 - `src/data/`: Fette (Verseifungszahl in mg KOH/g, Fettsäuren, Jodzahl, INCI), Zusätze inkl. ätherische Öle, Zielprofile,
   Vorlagen (Grundseifen Körper/Haar/Rasur je mit Spar-Variante).
-- `src/import/`: Salandia-Bestellübersicht und Salandia-Katalog (automatische Erkennung).
+- `src/import/`: allgemeiner Shop-Katalog (`olisoap-shop-katalog`, ein Shop je Datei inkl. Versand; Prompt für
+  Claude in Chrome in `docs/shop-katalog-prompt.md`), dazu Salandia-Bestellübersicht und -Katalog (automatische Erkennung).
 - `src/sync/` + `public/api/index.php`: Ende-zu-Ende-verschlüsselter Sync (PBKDF2 → AES-256-GCM im Browser, Server speichert
   nur Chiffretext, Abgleich über Hashes, lokale Fassung gewinnt bei Konflikten).
 - Rezepte: Grundseife + Varianten (`baseId`). Chargen speichern eine Kopie des Rezepts und festgeschriebene Kosten.
@@ -60,8 +61,7 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
 - Einkauf ist **shopunabhängig** (Salandia: kein Feed, kein Affiliate-Programm, Antwort freundlich, „melden, wenn es
   Reichweite gibt“). Shops (`db.shops`) mit Versand, versandfrei ab, Mindestbestellwert, Gebühr, „Laden vor Ort“; Modus
   „Nur was gebraucht wird“ optimiert über alle Shops inkl. Nebenkosten. Supermarkt-Ware: „Kaufe ich im Supermarkt“.
-- Nächste Stufe: Preise aus beliebigen Shops importieren (ein JSON-Format für alle, Prompt für Claude in Chrome
-  verallgemeinern, Schnelleingabe „Preis gesehen“), evtl. eBay-API. Keine fremden Shop-Daten zentral verteilen
+- Shop-Katalog-Import für beliebige Shops ist da. Offen: Schnelleingabe „Preis gesehen“ (Link, Preis, Größe), evtl. eBay-API. Keine fremden Shop-Daten zentral verteilen
   (Demo nutzt erfundene Beispiel-Shops, `src/demo/catalog.ts`). Keine allgemeine Einkaufs-App bauen (Scope).
 - Hauptziel: eigenes Sieden optimieren, Verluste durch Ranzigwerden vermeiden; Einsteigern helfen ist willkommen.
   Affiliate allenfalls später, gekennzeichnet, ohne Vorschläge zu verbiegen.
