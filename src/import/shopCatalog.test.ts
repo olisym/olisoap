@@ -36,6 +36,15 @@ describe('Shop-Katalog (allgemeines Format)', () => {
     expect(r.products).toHaveLength(6)
   })
 
+  it('übernimmt Versand nach Gewicht', () => {
+    const r = importShopCatalog({ ...catalog, shop: { ...catalog.shop, versand_eur: null, versand_staffel: [{ bis_kg: 10, eur: 5.95 }, { bis_kg: 30, eur: 10.71 }] } }, [])
+    expect(r.shop.shippingByWeight).toEqual([
+      { maxKg: 10, eur: 5.95 },
+      { maxKg: 30, eur: 10.71 },
+    ])
+    expect(r.shop.shipping).toBeUndefined()
+  })
+
   it('aktualisiert bekannte Artikel desselben Shops nur im Preis, behält eigene Einstellungen', () => {
     const first = importShopCatalog(catalog, []).products
     const edited = first.map((p) => (p.name.startsWith('Shea') ? { ...p, density: 0.9 } : p))

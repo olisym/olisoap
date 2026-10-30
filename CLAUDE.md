@@ -59,7 +59,7 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
 - Cremes/Emulsionen-Kern (Aftershave-Balsam als erstes Produkt), dann wasserfreie Produkte (Balsam, Bartwachs, Massageöl,
   Deo), Tinkturen (Myrrhe, Weihrauch). Haltbarkeit fertiger Produkte, „Retten“ ablaufender Zutaten.
 - Einkauf ist **shopunabhängig** (Salandia: kein Feed, kein Affiliate-Programm, Antwort freundlich, „melden, wenn es
-  Reichweite gibt“). Shops (`db.shops`) mit Versand, versandfrei ab, Mindestbestellwert, Gebühr, „Laden vor Ort“; Modus
+  Reichweite gibt“). Shops (`db.shops`) mit Versand (pauschal oder nach Gewichtsstufen, Paketgewicht = Inhalt × 1,15), versandfrei ab, Mindestbestellwert, Gebühr, „Laden vor Ort“; Modus
   „Nur was gebraucht wird“ optimiert über alle Shops inkl. Nebenkosten. Supermarkt-Ware: „Kaufe ich im Supermarkt“.
 - Shop-Katalog-Import für beliebige Shops ist da. Offen: Schnelleingabe „Preis gesehen“ (Link, Preis, Größe), evtl. eBay-API. Keine fremden Shop-Daten zentral verteilen
   (Demo nutzt erfundene Beispiel-Shops, `src/demo/catalog.ts`). Keine allgemeine Einkaufs-App bauen (Scope).
