@@ -39,9 +39,20 @@ export interface ShopCatalog {
   produkte: ShopItem[]
 }
 
+/**
+ * Erkennt das Format großzügig: Erzeugte Dateien lassen manchmal „format“ weg oder schreiben „products“ statt „produkte“.
+ * Gibt den Katalog in der erwarteten Form zurück, sonst undefined.
+ */
+export function asShopCatalog(data: unknown): ShopCatalog | undefined {
+  const d = data as Partial<ShopCatalog> & { products?: ShopItem[]; scraped_at?: string }
+  const produkte = Array.isArray(d?.produkte) ? d.produkte : Array.isArray(d?.products) ? d.products : undefined
+  if (!produkte || typeof d?.shop?.name !== 'string') return undefined
+  if (d.format !== undefined && d.format !== SHOP_FORMAT) return undefined
+  return { format: SHOP_FORMAT, version: 1, erstellt_am: d.erstellt_am ?? d.scraped_at ?? new Date().toISOString().slice(0, 10), shop: d.shop, produkte }
+}
+
 export function isShopCatalog(data: unknown): data is ShopCatalog {
-  const d = data as Partial<ShopCatalog>
-  return d?.format === SHOP_FORMAT && typeof d.shop?.name === 'string' && Array.isArray(d.produkte)
+  return asShopCatalog(data) !== undefined
 }
 
 const KIND_CATEGORY: Record<Kind, ProductCategory> = {

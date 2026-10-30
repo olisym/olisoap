@@ -24,7 +24,7 @@ import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
 import { importSalandia } from '../import/salandia'
 import { importSalandiaCatalog, isCatalog } from '../import/salandiaCatalog'
-import { importShopCatalog, isShopCatalog } from '../import/shopCatalog'
+import { asShopCatalog, importShopCatalog } from '../import/shopCatalog'
 import { ChevronRight, Upload } from 'lucide-react'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ProductCategory[]
@@ -474,8 +474,9 @@ function Import() {
   async function importFile(file: File): Promise<string> {
     const data = JSON.parse(await file.text())
     const inv = await loadInventory()
-    if (isShopCatalog(data)) {
-      const { shop, products, updates } = importShopCatalog(data, inv.products, await db.shops.get(data.shop.name.trim()))
+    const shopCatalog = asShopCatalog(data)
+    if (shopCatalog) {
+      const { shop, products, updates } = importShopCatalog(shopCatalog, inv.products, await db.shops.get(shopCatalog.shop.name.trim()))
       await db.transaction('rw', db.products, db.shops, async () => {
         await db.products.bulkAdd(products)
         await db.products.bulkUpdate(updates.map((u) => ({ key: u.id, changes: u.changes })))
@@ -492,6 +493,7 @@ function Import() {
       })
       return `${file.name}: Katalog vom ${new Date(data.scraped_at).toLocaleDateString('de-DE')}, ${products.length} neue Artikel, ${updates.length} Preise aktualisiert.`
     }
+    if (!Array.isArray(data?.orders)) throw new Error('Format nicht erkannt. Erwartet: Shop-Katalog (mit „shop“ und „produkte“), Salandia-Katalog oder -Bestellübersicht.')
     const { products, purchases } = importSalandia(data, inv.products, inv.purchases)
     await db.transaction('rw', db.products, db.purchases, async () => {
       await db.products.bulkAdd(products)
