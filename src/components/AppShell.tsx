@@ -1,7 +1,9 @@
-import { BookOpen, Cloud, CloudOff, Ellipsis, RefreshCw, FlaskConical, Layers, LayoutDashboard, Moon, Package, ShoppingCart, Sun, Wrench, X, type LucideIcon } from 'lucide-react'
+import { BookOpen, Cloud, CloudOff, Download, Ellipsis, RefreshCw, FlaskConical, Layers, LayoutDashboard, Moon, Package, ShoppingCart, Sun, TriangleAlert, Wrench, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useSyncStatus } from '../pages/SyncPage'
+import { reloadToLatest, useVersionStatus, versionAdvice } from '../version'
 
 interface NavItem {
   to: string
@@ -51,6 +53,34 @@ function SyncIndicator() {
   )
 }
 
+/**
+ * Versionshinweis unter dem Sync-Zustand: „Update“, wenn der Server eine neuere Version hat (auch ein wartender
+ * Service Worker zählt), „Server veraltet“, wenn GitHub schon weiter ist als der Server. Sonst unsichtbar.
+ */
+function VersionIndicator({ compact = false, waiting, update }: { compact?: boolean; waiting: boolean; update: () => void }) {
+  const v = useVersionStatus()
+  const advice = waiting ? 'reload' : versionAdvice(v)
+  if (advice === 'reload')
+    return (
+      <button
+        className={compact ? 'btn-primary w-full' : 'flex flex-col items-center gap-1 text-[0.65rem] font-semibold text-accent'}
+        onClick={() => (waiting ? update() : void reloadToLatest(update))}
+        title="Neue Version verfügbar"
+      >
+        <Download size={18} aria-hidden />
+        {compact ? 'Neue Version: jetzt neu laden' : 'Update'}
+      </button>
+    )
+  if (advice === 'serverBehind' && !compact)
+    return (
+      <NavLink to="/sync" className="flex flex-col items-center gap-1 text-center text-[0.65rem] text-warn" title={`Server: ${v.server}, GitHub: ${v.latest}`}>
+        <TriangleAlert size={18} aria-hidden />
+        Server veraltet
+      </NavLink>
+    )
+  return null
+}
+
 function Logo() {
   return (
     <span className="grid size-10 place-items-center rounded-xl bg-accent font-bold text-accent-ink" aria-hidden>
@@ -61,6 +91,12 @@ function Logo() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [theme, toggleTheme] = useTheme()
+  // Service Worker einmal registrieren; ein wartender neuer Worker heißt: Update bereit.
+  const {
+    needRefresh: [waiting],
+    updateServiceWorker,
+  } = useRegisterSW()
+  const update = () => void updateServiceWorker(true)
   const [more, setMore] = useState(false)
   const location = useLocation()
   useEffect(() => setMore(false), [location.pathname])
@@ -89,12 +125,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </NavLink>
         ))}
         <SyncIndicator />
+        <VersionIndicator waiting={waiting} update={update} />
         <button className="btn-ghost" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Helles Design' : 'Dunkles Design'}>
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </nav>
 
       <main className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-6 md:pb-10 md:pl-30">{children}</main>
+
+      {/* Auf dem Handy ist in der unteren Leiste kein Platz: Update-Hinweis darüber */}
+      <div className="no-print fixed inset-x-3 bottom-20 z-30 md:hidden [&:empty]:hidden">
+        <VersionIndicator compact waiting={waiting} update={update} />
+      </div>
 
       {/* Untere Leiste auf dem Handy */}
       <nav aria-label="Hauptnavigation" className="no-print fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">

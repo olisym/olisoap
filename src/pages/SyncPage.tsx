@@ -2,6 +2,7 @@ import { Cloud, CloudOff, LogOut, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useState, useSyncExternalStore } from 'react'
 import { Chip, PageHeader, Panel } from '../components/ui'
 import { defaultServer, signIn, signOut, syncNow, syncStore } from '../sync/engine'
+import { useVersionStatus, versionAdvice } from '../version'
 
 export function useSyncStatus() {
   return useSyncExternalStore(syncStore.subscribe, syncStore.get)
@@ -162,7 +163,22 @@ export function SyncPage() {
           </div>
         </Panel>
       )}
-      <p className="text-xs text-muted">App-Version {__BUILD__}</p>
+      <VersionInfo />
     </div>
+  )
+}
+
+/** Versionen im Klartext, zum Abgleich mit „Build …“ in Plesk. */
+function VersionInfo() {
+  const v = useVersionStatus()
+  const advice = versionAdvice(v)
+  return (
+    <p className="text-xs text-muted">
+      App-Version {v.running}
+      {v.server && ` · Server ${v.server}`}
+      {v.latest && ` · GitHub ${v.latest}`}
+      {advice === 'reload' && <span className="text-accent"> · Neuere Version auf dem Server: Seite neu laden.</span>}
+      {advice === 'serverBehind' && <span className="text-warn"> · Der Server hat die neueste Version noch nicht: in Plesk unter Git „Jetzt abrufen“.</span>}
+    </p>
   )
 }
