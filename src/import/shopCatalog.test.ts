@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { importShopCatalog, isShopCatalog, SHOP_FORMAT, type ShopCatalog } from './shopCatalog'
+import { asShopCatalog, importShopCatalog, isShopCatalog, SHOP_FORMAT, type ShopCatalog } from './shopCatalog'
 
 const catalog: ShopCatalog = {
   format: SHOP_FORMAT,
@@ -21,6 +21,13 @@ describe('Shop-Katalog (allgemeines Format)', () => {
   it('erkennt das Format', () => {
     expect(isShopCatalog(catalog)).toBe(true)
     expect(isShopCatalog({ products: [], scraped_at: 'x' })).toBe(false)
+  })
+
+  it('verzeiht fehlendes „format“ und „products“ statt „produkte“', () => {
+    const { format: _f, produkte, ...rest } = catalog
+    const loose = asShopCatalog({ ...rest, products: produkte })
+    expect(loose?.produkte).toHaveLength(produkte.length)
+    expect(asShopCatalog({ ...catalog, format: 'etwas-anderes' })).toBeUndefined()
   })
 
   it('legt Artikel mit Zuordnung an und übernimmt die Versandbedingungen', () => {
