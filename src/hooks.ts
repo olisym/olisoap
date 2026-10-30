@@ -9,7 +9,15 @@ export interface Workshop {
   batches: Batch[]
   inventory: Inventory
   orderItems: OrderItem[]
+  /** Eigene Sudgröße in g Fett (z. B. passend zur Form). Fehlt = Menge aus dem Rezept. */
+  batchFat?: number
+  /** Gefühlte Kosten je zusätzlicher Bestellung für die Einkaufsplanung. */
+  extraOrderCost?: number
 }
+
+/** Einstellungsschlüssel (Tabelle settings, wird synchronisiert). */
+export const BATCH_FAT_KEY = 'batchFat'
+export const EXTRA_ORDER_KEY = 'extraOrderCost'
 
 /** Alle Werkstattdaten auf einmal, live aktualisiert. */
 export function useWorkshop(): Workshop | undefined {
@@ -18,12 +26,23 @@ export function useWorkshop(): Workshop | undefined {
     batches: await db.batches.orderBy('date').reverse().toArray(),
     inventory: await loadInventory(),
     orderItems: await db.orderItems.toArray(),
+    batchFat: (await db.settings.get(BATCH_FAT_KEY))?.value as number | undefined,
+    extraOrderCost: (await db.settings.get(EXTRA_ORDER_KEY))?.value as number | undefined,
   }))
 }
 
-export function recipeFeasibility(recipe: Recipe, inventory: Inventory): Feasibility | undefined {
+/**
+ * Rezept in der eigenen Sudgröße. Gilt für Seife am Stück; Rasierseife im Tiegel (Mischlauge) behält ihre Menge,
+ * weil ein Tiegel viel kleiner ist als eine Kastenform.
+ */
+export function atBatchSize(recipe: Recipe, batchFat?: number): Recipe {
+  if (!batchFat || recipe.input.lyeType === 'dual') return recipe
+  return { ...recipe, input: { ...recipe.input, totalFat: batchFat } }
+}
+
+export function recipeFeasibility(recipe: Recipe, inventory: Inventory, batchFat?: number): Feasibility | undefined {
   try {
-    return feasibility(inventory, needsOf(calculate(recipe.input)))
+    return feasibility(inventory, needsOf(calculate(atBatchSize(recipe, batchFat).input)))
   } catch {
     return undefined
   }

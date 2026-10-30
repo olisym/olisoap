@@ -4,7 +4,7 @@ import { addDays } from '../core/batch'
 import { allTasks, type TaskKind } from '../core/tasks'
 import { barsLeft, isTub, readyDate } from '../db'
 import { fmt } from '../format'
-import { daysBetween, de, groupRecipes, recipeFeasibility, today, useWorkshop } from '../hooks'
+import { atBatchSize, daysBetween, de, groupRecipes, recipeFeasibility, today, useWorkshop } from '../hooks'
 import { Bar, Chip, Kpi, Panel, StatusDot, TaskTile } from '../components/ui'
 
 const TASK_ICON: Record<TaskKind, LucideIcon> = { cut: Scissors, weigh: Scale, test: ShieldCheck, label: Tag }
@@ -21,7 +21,7 @@ export function Dashboard() {
   const { recipes, batches, inventory, orderItems } = w
 
   const families = groupRecipes(recipes)
-  const feas = recipes.map((r) => ({ recipe: r, f: recipeFeasibility(r, inventory) }))
+  const feas = recipes.map((r) => ({ recipe: r, f: recipeFeasibility(r, inventory, w.batchFat) }))
   const ready = feas.filter((x) => x.f && x.f.count > 0)
   const curing = batches.filter((b) => barsLeft(b) > 0 && readyDate(b) > now).sort((a, b) => readyDate(a).localeCompare(readyDate(b)))
   const barsInStock = batches.filter((b) => readyDate(b) <= now).reduce((s, b) => s + Math.max(0, barsLeft(b)), 0)
@@ -187,7 +187,7 @@ export function Dashboard() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{recipe.name}</p>
                 <p className="truncate text-xs text-muted">
-                  {!f ? 'Rezept unvollständig' : f.count > 0 ? `Vorrat reicht für ${f.count}× ${fmt(recipe.input.totalFat)} g` : `Fehlt: ${f.missing.map((m) => m.name).join(', ')}`}
+                  {!f ? 'Rezept unvollständig' : f.count > 0 ? `Vorrat reicht für ${f.count}× ${fmt(atBatchSize(recipe, w.batchFat).input.totalFat)} g` : `Fehlt: ${f.missing.map((m) => m.name).join(', ')}`}
                 </p>
               </div>
               {f && f.count > 0 ? (

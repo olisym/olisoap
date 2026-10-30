@@ -62,6 +62,9 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
 - Einkauf ist **shopunabhängig** (Salandia: kein Feed, kein Affiliate-Programm, Antwort freundlich, „melden, wenn es
   Reichweite gibt“). Shops (`db.shops`) mit Versand (pauschal oder nach Gewichtsstufen, Paketgewicht = Inhalt × 1,15), versandfrei ab, Mindestbestellwert, Gebühr, „Laden vor Ort“; Modus
   „Nur was gebraucht wird“ optimiert über alle Shops inkl. Nebenkosten. Supermarkt-Ware: „Kaufe ich im Supermarkt“.
+  Vorlieben je Shop (bevorzugt = bis 10 % teurer ok, meiden = nur wenn einzige Quelle), „Aufwand je weitere Bestellung“
+  (Einstellung `extraOrderCost`). Eigene Sudgröße `batchFat` (Nutzer: 2-kg-Kastenform) gilt für Seife am Stück
+  (`atBatchSize`, nicht für Tiegel/Mischlauge). Einkauf: „Was kostet ein Sud jetzt?“ sortiert Rezepte nach Ausgabe heute.
 - Shop-Katalog-Import für beliebige Shops ist da. Offen: Schnelleingabe „Preis gesehen“ (Link, Preis, Größe), evtl. eBay-API. Keine fremden Shop-Daten zentral verteilen
   (Demo nutzt erfundene Beispiel-Shops, `src/demo/catalog.ts`). Keine allgemeine Einkaufs-App bauen (Scope).
 - Hauptziel: eigenes Sieden optimieren, Verluste durch Ranzigwerden vermeiden; Einsteigern helfen ist willkommen.

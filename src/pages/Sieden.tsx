@@ -9,7 +9,7 @@ import { correct } from '../core/correction'
 import { materialStock } from '../core/inventory'
 import { createBatch, type Recipe } from '../db'
 import { fmt } from '../format'
-import { groupRecipes, recipeFeasibility, today, useWorkshop } from '../hooks'
+import { atBatchSize, groupRecipes, recipeFeasibility, today, useWorkshop } from '../hooks'
 
 const STEPS = ['Rezept', 'Menge & Vorrat', 'Sieden', 'Abschluss'] as const
 
@@ -42,7 +42,7 @@ export function SiedenStart() {
         {families.map(({ base, variants }) => (
           <section key={base.id} className="card flex flex-col gap-2">
             {[base, ...variants].map((r, i) => {
-              const f = recipeFeasibility(r, w.inventory)
+              const f = recipeFeasibility(r, w.inventory, w.batchFat)
               return (
                 <Link
                   key={r.id}
@@ -78,7 +78,9 @@ export function SiedenRun() {
 function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof useWorkshop>> }) {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
-  const [totalFat, setTotalFat] = useState<number | undefined>(recipe.input.totalFat)
+  // Startmenge: eigene Sudgröße (z. B. passend zur Form), sonst die Menge aus dem Rezept.
+  const size = atBatchSize(recipe, w.batchFat).input.totalFat
+  const [totalFat, setTotalFat] = useState<number | undefined>(size)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [actual, setActual] = useState<Record<string, number | undefined>>({})
   const [lyeTemp, setLyeTemp] = useState<number>()
@@ -99,7 +101,8 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
 
   /** Im Einkauf mit diesem Rezept und dieser Menge als Bedarf weitermachen. */
   function planMissing() {
-    const factor = recipe.input.totalFat ? (totalFat || 0) / recipe.input.totalFat : 1
+    // Im Einkauf zählt ein Sud in der eigenen Sudgröße.
+    const factor = size ? (totalFat || 0) / size : 1
     navigate(`/einkauf?rezept=${recipe.id}&faktor=${Math.round(factor * 100) / 100}`)
   }
 

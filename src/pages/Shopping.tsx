@@ -1,18 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Calculator, Copy, ExternalLink, Minus, PackageCheck, Plus, ShoppingCart, Store, Truck, X } from 'lucide-react'
+import { Calculator, Copy, ExternalLink, Minus, PackageCheck, PiggyBank, Plus, ShoppingCart, Store, Truck, X } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
-import { EmptyState, PageHeader, Panel } from '../components/ui'
+import { EmptyState, LabelText, PageHeader, Panel } from '../components/ui'
 import { needsOf } from '../core/batch'
 import { calculate } from '../core/calc'
-import { CATEGORY_LABELS, materialKey, offerPrice, packageGrams, type Product } from '../core/inventory'
+import { CATEGORY_LABELS, materialKey, offerPrice, packageGrams, type Inventory, type Product } from '../core/inventory'
 import { planShopping, type ShoppingMode, type ShoppingSuggestion } from '../core/shopping'
-import { parcelKg, shopCosts, summarizeOrders, type ShopOrder, type ShopTerms } from '../core/shops'
+import { optimizeShops, parcelKg, shopCosts, summarizeOrders, type ShopOrder, type ShopPreferences, type ShopTerms } from '../core/shops'
 import type { Need } from '../core/batch'
-import { db, receiveOrderItem, type OrderItem } from '../db'
+import { db, receiveOrderItem, type OrderItem, type Recipe } from '../db'
 import { fmt } from '../format'
-import { de, groupRecipes, useWorkshop } from '../hooks'
+import { atBatchSize, BATCH_FAT_KEY, de, EXTRA_ORDER_KEY, groupRecipes, useWorkshop } from '../hooks'
 
 export function Shopping() {
   const w = useWorkshop()
@@ -36,7 +36,7 @@ export function Shopping() {
     const n = plan[r.id] ?? 0
     if (!n) return []
     try {
-      return needsOf(calculate(r.input)).map((x) => ({ ...x, grams: x.grams * n }))
+      return needsOf(calculate(atBatchSize(r, w.batchFat).input)).map((x) => ({ ...x, grams: x.grams * n }))
     } catch {
       return []
     }
@@ -54,10 +54,11 @@ export function Shopping() {
       }),
     ],
   }
-  const suggestions = planShopping(pendingInv, needs, mode, undefined, terms)
+  const prefs = { extraOrderCost: w.extraOrderCost }
+  const suggestions = planShopping(pendingInv, needs, mode, undefined, terms, prefs)
   const orders = summarizeOrders(suggestions, terms)
   // Summe inklusive Versand und Gebühren, damit beide Modi ehrlich vergleichbar sind.
-  const totalOf = (m: ShoppingMode) => summarizeOrders(planShopping(pendingInv, needs, m, undefined, terms), terms).reduce((sum, o) => sum + o.total, 0)
+  const totalOf = (m: ShoppingMode) => summarizeOrders(planShopping(pendingInv, needs, m, undefined, terms, prefs), terms).reduce((sum, o) => sum + o.total, 0)
 
   const open = orderItems.filter((o) => o.status === 'open')
   const ordered = orderItems.filter((o) => o.status === 'ordered')
@@ -96,8 +97,19 @@ export function Shopping() {
     <div className="space-y-6">
       <PageHeader eyebrow="Einkauf" title="Was muss bestellt werden?" />
 
+      <BatchCosts recipes={w.recipes} inv={pendingInv} batchFat={w.batchFat} terms={terms} prefs={prefs} onPlan={(id) => {
+          setPlan({ [id]: 1 })
+          setMode('total')
+        }} />
+
       <Panel title="Bedarf berechnen" icon={Calculator}>
-        <p className="mb-4 text-sm text-muted">Wie oft willst du was sieden? Die App zieht Vorrat und offene Bestellungen ab und schlägt Packungen vor.</p>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <p className="max-w-xl text-sm text-muted">Wie oft willst du was sieden? Die App zieht Vorrat und offene Bestellungen ab und schlägt Packungen vor.</p>
+          <label className="label w-44">
+            <LabelText hint="Fettmenge pro Sud, passend zu deiner Form. Gilt für Seife am Stück; Rasierseife im Tiegel behält ihre Menge aus dem Rezept.">Ein Sud</LabelText>
+            <NumberField value={w.batchFat} digits={0} suffix="g Fett" placeholder="wie Rezept" ariaLabel="Fettmenge pro Sud" onChange={(v) => db.settings.put({ key: BATCH_FAT_KEY, value: v || undefined })} />
+          </label>
+        </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {groupRecipes(w.recipes).flatMap(({ base, variants }) =>
             [base, ...variants].map((r) => {
@@ -243,7 +255,7 @@ export function Shopping() {
               </ul>
             )}
           </Panel>
-          <ShopSettings terms={terms} />
+          <ShopSettings terms={terms} extraOrderCost={w.extraOrderCost} />
           {received.length > 0 && (
             <Panel title="Zuletzt eingetroffen" icon={PackageCheck}>
               <ul className="space-y-1 text-sm">
@@ -495,7 +507,7 @@ function OrderSummary({ orders }: { orders: ShopOrder[] }) {
 }
 
 /** Versandkosten und Gebühren je Shop; leer lassen, was unbekannt ist. */
-function ShopSettings({ terms }: { terms: ShopTerms[] }) {
+function ShopSettings({ terms, extraOrderCost }: { terms: ShopTerms[]; extraOrderCost?: number }) {
   const save = (t: ShopTerms, patch: Partial<ShopTerms>) => db.shops.put({ ...t, ...patch })
   const field = (t: ShopTerms, key: 'shipping' | 'freeShippingFrom' | 'minOrder' | 'paymentFee', label: string) => (
     <label className="label text-xs">
@@ -506,11 +518,27 @@ function ShopSettings({ terms }: { terms: ShopTerms[] }) {
   return (
     <Panel title="Shops" icon={Store}>
       <p className="mb-3 text-xs text-muted">Damit der Einkauf entscheiden kann, ob sich Aufteilen lohnt. Steht meist unter „Versand“ im Shop.</p>
+      <label className="label mb-4 text-xs">
+        <LabelText hint="Was dir eine zusätzliche Bestellung an Aufwand wert ist (Paket annehmen, Überblick behalten). Der Einkauf teilt nur auf, wenn die Ersparnis größer ist. Zählt nicht zum Preis.">
+          Aufwand je weitere Bestellung
+        </LabelText>
+        <NumberField value={extraOrderCost} digits={2} suffix="€" placeholder="0" ariaLabel="Aufwand je weitere Bestellung" onChange={(v) => db.settings.put({ key: EXTRA_ORDER_KEY, value: v || undefined })} />
+      </label>
       <ul className="space-y-4">
         {terms.map((t) => (
           <li key={t.name} className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{t.name}</span>
+              <span className="min-w-0 flex-1 truncate font-medium">{t.name}</span>
+              <select
+                className="field-inline text-sm"
+                value={t.preference ?? ''}
+                aria-label={`${t.name}: Vorliebe`}
+                onChange={(e) => save(t, { preference: (e.target.value || undefined) as ShopTerms['preference'] })}
+              >
+                <option value="">neutral</option>
+                <option value="prefer">bevorzugt</option>
+                <option value="avoid">meiden</option>
+              </select>
               <label className="flex min-h-11 items-center gap-2 text-sm text-muted">
                 <input type="checkbox" className="size-5 accent-[var(--color-accent)]" checked={!!t.local} onChange={(e) => save(t, { local: e.target.checked })} />
                 Laden vor Ort
@@ -562,5 +590,73 @@ function WeightTiers({ terms, onChange }: { terms: ShopTerms; onChange: (tiers: 
         <Plus size={16} /> {tiers.length ? 'Weitere Stufe' : 'Versand nach Gewicht'}
       </button>
     </div>
+  )
+}
+
+/**
+ * Was kostet ein Sud jetzt? Je Rezept in der eigenen Sudgröße: was heute eingekauft werden müsste (günstigste
+ * Verteilung inkl. Versand, Vorrat und offene Bestellungen abgezogen). Für „wenig Geld, schnell sieden“.
+ */
+function BatchCosts({
+  recipes,
+  inv,
+  batchFat,
+  terms,
+  prefs,
+  onPlan,
+}: {
+  recipes: Recipe[]
+  inv: Inventory
+  batchFat?: number
+  terms: ShopTerms[]
+  prefs: ShopPreferences
+  onPlan: (id: string) => void
+}) {
+  const rows = recipes
+    .flatMap((r) => {
+      try {
+        const sized = atBatchSize(r, batchFat)
+        const suggestions = optimizeShops(inv, needsOf(calculate(sized.input)), terms, undefined, prefs)
+        const orders = summarizeOrders(suggestions, terms)
+        return [
+          {
+            recipe: r,
+            fat: sized.input.totalFat,
+            cash: orders.reduce((s, o) => s + o.total, 0),
+            shops: orders.filter((o) => o.subtotal > 0 || o.total > 0).map((o) => o.shop),
+            missing: suggestions.filter((x) => !x.lines.length).map((x) => x.need.name),
+            unpriced: suggestions.some((x) => x.lines.length && x.total === undefined),
+          },
+        ]
+      } catch {
+        return []
+      }
+    })
+    .sort((a, b) => Number(a.missing.length > 0) - Number(b.missing.length > 0) || a.cash - b.cash)
+  if (!rows.length) return null
+  return (
+    <Panel title="Was kostet ein Sud jetzt?" icon={PiggyBank}>
+      <p className="mb-3 text-sm text-muted">Was du heute ausgeben müsstest, inklusive Versand. Vorrat und offene Bestellungen sind abgezogen.</p>
+      <ul className="divide-y divide-line">
+        {rows.map((x) => (
+          <li key={x.recipe.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
+            <span className="min-w-40 flex-1">
+              <span className="font-medium">{x.recipe.name}</span>
+              <span className="ml-2 text-sm text-muted">
+                {fmt(x.fat)} g Fett
+                {x.shops.length > 0 && ` · ${x.shops.join(' + ')}`}
+              </span>
+              {x.missing.length > 0 && <span className="block text-xs text-warn">Kein Artikel für: {x.missing.join(', ')}</span>}
+            </span>
+            <span className="w-28 text-right font-semibold tabular-nums">
+              {x.cash < 0.005 && !x.missing.length ? <span className="text-ok">alles da</span> : `${fmt(x.cash, 2)} €${x.unpriced ? ' +' : ''}`}
+            </span>
+            <button className="btn" onClick={() => onPlan(x.recipe.id)} aria-label={`${x.recipe.name} einplanen`}>
+              Einplanen
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   )
 }
