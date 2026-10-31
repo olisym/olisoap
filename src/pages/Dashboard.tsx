@@ -105,9 +105,9 @@ export function Dashboard() {
       </section>
 
       <section aria-label="Kennzahlen" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="card">
-          <Kpi label="Seife fertig" value={barsInStock} unit="Stück" />
-        </div>
+        <Link to="/lager/uebrig" className="card transition hover:border-accent/60">
+          <Kpi label="Seife fertig" value={barsInStock} unit="Stück" hint="Übrig ansehen →" />
+        </Link>
         <div className="card">
           <Kpi label="Am Reifen" value={curing.length} unit={curing.length === 1 ? 'Charge' : 'Chargen'} />
         </div>

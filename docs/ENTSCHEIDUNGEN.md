@@ -108,6 +108,15 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   (Teilen-Menü bzw. Zwischenablage), kein Server. **Nur im Testmodus** (Profil, standardmäßig aus): Überall
   Zusatzknöpfe nerven (Nutzer: „das nervt den total, und mich erst recht“).
 
+## Übrig
+
+- Reiter „Übrig“ im Vorrat (`#/lager/uebrig`, Kennzahl „Seife fertig“ auf der Übersicht führt hin): fertige Seife
+  zuerst (nur die kann man benutzen), darin nach „am besten bis“; Ausbuchen direkt dort (gleicher Baustein wie in
+  der Charge, `OutflowForm`). Fette, deren MHD oder Anbruch + Haltbarkeit (Faustregel) in 90 Tagen endet, mit dem
+  Rezept, das am meisten davon braucht, und ob das bis zum Ablauf zu schaffen ist (ein Sud alle zwei Monate, wie in
+  `shelfLife.ts`). Wenn nicht: „Rezept mit mehr … entwerfen“ öffnet den Assistenten mit dem Fett als Lieblingsöl
+  (`#/entwickeln?fett=…`).
+
 ## Einkauf (größter Ausbau bisher)
 
 - **Shopunabhängig**: Salandia hat kein Feed/Affiliate-Programm (freundliche Antwort: interessant, melden, wenn es
