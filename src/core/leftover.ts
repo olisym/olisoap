@@ -1,4 +1,4 @@
-import { addDays, earliestFatBestBefore, type Deduction, type Need } from './batch'
+import { addDays, type Deduction, type Need } from './batch'
 import { calculate } from './calc'
 import { materialKey, type Inventory, type MaterialKey } from './inventory'
 import { suggestBestUse } from './label'
@@ -28,7 +28,7 @@ export interface SoapLeft {
   left: number
   readyDate: string
   ready: boolean
-  /** Am besten verwenden bis: vom Etikett, sonst Vorschlag aus MHD der Fette und Linolsäure (Faustregel). */
+  /** Am besten verwenden bis: vom Etikett, sonst Vorschlag aus Linolsäure und Überfettung (Faustregel). */
   bestUse: string
 }
 
@@ -44,7 +44,7 @@ export function soapLeftovers(batches: BatchLike[], today: string): SoapLeft[] {
       } catch {
         // Unvollständiges Rezept: Vorschlag ohne Linolsäure-Abschlag
       }
-      const bestUse = b.bestUse ?? suggestBestUse(b.date, pufa, earliestFatBestBefore(b.deductions))
+      const bestUse = b.bestUse ?? suggestBestUse(b.date, pufa, b.recipe.input.superfat)
       return { batchId: b.id, name: b.recipe.name, number: b.number, left, readyDate, ready: readyDate <= today, bestUse }
     })
     .filter((s) => s.left > 0)

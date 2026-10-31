@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { REFERENCE_2000G } from './fixtures'
 import type { Inventory, Product } from './inventory'
+import { calculate } from './calc'
+import { suggestBestUse } from './label'
 import { fatsAtRisk, soapLeftovers, type BatchLike } from './leftover'
 
 const today = '2026-10-31'
@@ -38,9 +40,10 @@ describe('Übrig: Seife', () => {
     expect(list.map((s) => s.batchId)).toEqual(['fertig', 'reift'])
   })
 
-  it('ohne Etikett: Vorschlag aus dem frühesten MHD der verbrauchten Fette', () => {
+  it('ohne Etikett: Vorschlag aus Linolsäure und Überfettung, nicht aus dem MHD der Öle', () => {
     const [s] = soapLeftovers([batch({ deductions: [{ lotId: 'l', key: 'fat:shea', grams: 100, bestBefore: '2027-02-01' }] })], today)
-    expect(s.bestUse).toBe('2027-02-01')
+    expect(s.bestUse).toBe(suggestBestUse('2026-08-01', calculate(REFERENCE_2000G).properties.polyunsaturated, REFERENCE_2000G.superfat))
+    expect(s.bestUse > '2027-02-01').toBe(true)
   })
 })
 

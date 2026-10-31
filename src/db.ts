@@ -206,6 +206,22 @@ db.version(8)
     }
   })
 
+// Anbruchdatum für vorhandene Gebinde nachtragen: frühestes Siededatum einer Charge, die daraus abgebucht hat.
+// Auf jedem Gerät gleich (gleiche Daten, gleiches Ergebnis), der Abgleich sieht also keinen Konflikt.
+db.version(9)
+  .stores({})
+  .upgrade(async (tx) => {
+    const firstUse = new Map<string, string>()
+    for (const b of await tx.table<Batch, string>('batches').toArray())
+      for (const d of b.deductions) if (!firstUse.has(d.lotId) || b.date < firstUse.get(d.lotId)!) firstUse.set(d.lotId, b.date)
+    await tx
+      .table<Lot, string>('lots')
+      .toCollection()
+      .modify((l) => {
+        if (!l.openedAt && firstUse.has(l.id)) l.openedAt = firstUse.get(l.id)
+      })
+  })
+
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
 })
@@ -270,7 +286,15 @@ export async function createBatch(recipe: Recipe, opts: BatchOptions): Promise<B
       ...opts.extra,
     }
     if (opts.deductStock)
-      for (const d of plan.deductions) await db.lots.where('id').equals(d.lotId).modify((l) => void (l.gramsLeft -= d.grams))
+      for (const d of plan.deductions)
+        await db.lots
+          .where('id')
+          .equals(d.lotId)
+          .modify((l) => {
+            l.gramsLeft -= d.grams
+            // Erstes Abbuchen = angebrochen: daraus schätzt „Übrig“, wann offene Fette ranzig werden
+            l.openedAt ??= opts.date
+          })
     await db.batches.add(batch)
     return batch
   })

@@ -86,7 +86,7 @@ export function Leftovers() {
             })}
           </ul>
         )}
-        <p className="mt-3 text-xs text-muted">{t('„Am besten bis“ vom Etikett, sonst Vorschlag aus dem MHD der Fette und dem Anteil an Linolsäure (Faustregel).')}</p>
+        <p className="mt-3 text-xs text-muted">{t('„Am besten bis“ vom Etikett, sonst Vorschlag aus Linolsäure und Überfettung: Ranzig wird das freie Fett in der Seife (Faustregel).')}</p>
       </Panel>
 
       <Panel title={t('Fette, die bald ablaufen')} action={fats.length > 0 ? <Chip tone="warn">{t('{{n}} in 3 Monaten', { n: fats.length })}</Chip> : undefined}>

@@ -36,6 +36,9 @@ describe('Etikett', () => {
   it('Haltbarkeits-Vorschlag', () => {
     expect(suggestBestUse('2026-10-24', 5)).toBe('2028-10-23')
     expect(suggestBestUse('2026-10-24', 12)).toBe('2027-10-24')
-    expect(suggestBestUse('2026-10-24', 5, '2027-03-01')).toBe('2027-03-01')
+    // Mehr freies Fett mit Linolsäure: kürzer; wenig Linolsäure: Überfettung egal
+    expect(suggestBestUse('2026-10-24', 12, 8) < suggestBestUse('2026-10-24', 12, 5)).toBe(true)
+    expect(suggestBestUse('2026-10-24', 18, 5) < suggestBestUse('2026-10-24', 12, 5)).toBe(true)
+    expect(suggestBestUse('2026-10-24', 5, 12)).toBe(suggestBestUse('2026-10-24', 5, 0))
   })
 })
