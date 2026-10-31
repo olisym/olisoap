@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight, Check, FlaskConical, Save, ShoppingCart, Sparkles } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Findings } from '../components/Findings'
 import { PropertyBars } from '../components/PropertyBars'
 import { Chip, PageHeader, Panel, StatusDot } from '../components/ui'
@@ -203,7 +203,9 @@ export function Designer() {
   const [process, setProcess] = useState<DesignProcess>('cold')
   const [sliders, setSliders] = useState<Sliders>({ strength: 0.5, lather: 0.5, hardness: 0.5, price: 0.5 })
   const [source, setSource] = useState<'stock' | 'any'>('any')
-  const [favorite, setFavorite] = useState('')
+  // Aus „Übrig“: ein Fett, das weg muss, als Lieblingsöl vorbelegen (?fett=avocado)
+  const [params] = useSearchParams()
+  const [favorite, setFavorite] = useState(() => (FATS_BY_ID[params.get('fett') ?? ''] ? params.get('fett')! : ''))
   const [excluded, setExcluded] = useState<string[]>([])
   // Erst bündeln (gleiches Objekt, solange sich nichts ändert), dann verzögern. Ein frisches Objekt je Zeichnen
   // hätte bei jeder Antwort des Workers neu rechnen lassen: eine Endlosschleife.

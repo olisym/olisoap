@@ -26,6 +26,7 @@ import { importSalandia } from '../import/salandia'
 import { importSalandiaCatalog, isCatalog } from '../import/salandiaCatalog'
 import { asShopCatalog, importShopCatalog } from '../import/shopCatalog'
 import { ChevronRight, Upload } from 'lucide-react'
+import { Leftovers } from './Leftovers'
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ProductCategory[]
 /** Kategorien, die in Seifenrezepten verrechnet werden. */
@@ -41,6 +42,9 @@ export function InventoryPage() {
         <NavLink to="/lager" end className={tab}>
           Übersicht
         </NavLink>
+        <NavLink to="/lager/uebrig" className={tab}>
+          Übrig
+        </NavLink>
         <NavLink to="/lager/gebinde" className={tab}>
           Gebinde
         </NavLink>
@@ -53,6 +57,7 @@ export function InventoryPage() {
       </nav>
       <Routes>
         <Route index element={<StockOverview />} />
+        <Route path="uebrig" element={<Leftovers />} />
         <Route path="gebinde" element={<Stock />} />
         <Route path="artikel" element={<Products />} />
         <Route path="import" element={<Import />} />
