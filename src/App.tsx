@@ -10,6 +10,7 @@ import { InventoryPage } from './pages/InventoryPage'
 import { Labels } from './pages/Labels'
 import { RecipeEditor } from './pages/RecipeEditor'
 import { RecipeList } from './pages/RecipeList'
+import { Settings } from './pages/Settings'
 import { Shopping } from './pages/Shopping'
 import { SiedenRun, SiedenStart } from './pages/Sieden'
 import { SyncPage } from './pages/SyncPage'
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/korrektur/:id" element={<Correction />} />
           <Route path="/fette" element={<FatList />} />
           <Route path="/daten" element={<DataPage />} />
+          <Route path="/profil" element={<Settings />} />
           <Route path="/sync" element={<SyncPage />} />
           <Route path="/demo" element={<Demo />} />
         </Routes>

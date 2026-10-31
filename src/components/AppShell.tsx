@@ -1,4 +1,4 @@
-import { BookOpen, Cloud, CloudOff, Download, Ellipsis, RefreshCw, FlaskConical, Layers, LayoutDashboard, Moon, Package, ShoppingCart, Sun, TriangleAlert, Wrench, X, type LucideIcon } from 'lucide-react'
+import { BookOpen, Cloud, CloudOff, Download, Ellipsis, RefreshCw, FlaskConical, Layers, LayoutDashboard, Package, Settings, ShoppingCart, TriangleAlert, Wrench, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
@@ -23,21 +23,6 @@ const NAV: NavItem[] = [
   { to: '/werkzeuge', label: 'Werkzeuge', icon: Wrench },
 ]
 const MOBILE_MAIN = 4
-
-type Theme = 'dark' | 'light'
-
-function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>(() => (document.documentElement.dataset.theme as Theme) || 'dark')
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    try {
-      localStorage.setItem('olisoap-theme', theme)
-    } catch {
-      // Ohne Speicher gilt das Design nur für diese Sitzung.
-    }
-  }, [theme])
-  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
-}
 
 /** Sync-Zustand unten in der Leiste: auf einen Blick, ob alles gesichert ist. */
 function SyncIndicator() {
@@ -90,7 +75,6 @@ function Logo() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const [theme, toggleTheme] = useTheme()
   // Service Worker einmal registrieren; ein wartender neuer Worker heißt: Update bereit.
   const {
     needRefresh: [waiting],
@@ -126,9 +110,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         ))}
         <SyncIndicator />
         <VersionIndicator waiting={waiting} update={update} />
-        <button className="btn-ghost" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Helles Design' : 'Dunkles Design'}>
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
+        <NavLink to="/profil" className={({ isActive }) => `btn-ghost ${isActive ? 'text-accent' : ''}`} aria-label="Profil & Einstellungen" title="Profil & Einstellungen">
+          <Settings size={18} aria-hidden />
+        </NavLink>
       </nav>
 
       <main className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-6 md:pb-10 md:pl-30">{children}</main>
@@ -165,10 +149,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               {label}
             </NavLink>
           ))}
-          <button className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 hover:bg-surface-2" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun size={20} className="text-accent" /> : <Moon size={20} className="text-accent" />}
-            {theme === 'dark' ? 'Helles Design' : 'Dunkles Design'}
-          </button>
+          <NavLink to="/profil" className="flex min-h-12 items-center gap-3 rounded-xl px-3 hover:bg-surface-2">
+            <Settings size={20} className="text-accent" aria-hidden />
+            Profil & Einstellungen
+          </NavLink>
         </div>
       )}
     </div>

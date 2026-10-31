@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
+
+# Eigene Shop-Kataloge und andere private Daten, nie ins öffentliche Repo
+daten-lokal/
