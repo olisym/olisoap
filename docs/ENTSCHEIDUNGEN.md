@@ -90,6 +90,13 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   mit der sauren Spülung“). Seifenart hat dafür `usage`.
 - Beim Abwiegen erscheinen Ist-Felder erst auf „Etwas weicht ab?“ (weniger auf einmal). Auf dem Handy stehen
   Ist-Felder in eigener Zeile, sonst werden Namen abgeschnitten.
+- **Laufendes Sieden ist geschützt** (`src/session.ts`, localStorage, nicht synchronisiert): jeder Stand ab
+  „Los geht’s“ gesichert (Schritt, Häkchen, Ist-Gewichte, Temperaturen, Stoppuhr-Start). Neu laden/Update/anderer
+  Bildschirm → genau dort weiter, Hinweis „Sieden läuft“ führt zurück. Ende nur mit „Charge speichern“ oder
+  „Abbrechen“ (Rückfrage); zweites Rezept starten fragt erst. Verfällt nach 3 Tagen. Bildschirm bleibt beim Sieden an
+  (Screen Wake Lock). Kein `useBlocker`: braucht einen Daten-Router, die App nutzt `HashRouter`.
+- Texte zum Gegenlesen: Menschen lesen sie nicht im Quelltext. Lesbare Fassung aus der laufenden App erzeugen
+  (Druckansicht je Vorlage, nur Unterschiede), nicht ins Repo.
 - Rückmeldung je Schritt mit drei Knöpfen (Klar / Zu viel auf einmal / Unklar), beim Abschluss als Text teilbar
   (Teilen-Menü bzw. Zwischenablage), kein Server. **Nur im Testmodus** (Profil, standardmäßig aus): Überall
   Zusatzknöpfe nerven (Nutzer: „das nervt den total, und mich erst recht“).
