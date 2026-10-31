@@ -100,3 +100,32 @@ describe('Supermarkt mit Nährwerten', () => {
     expect(again.updates.find((u) => u.changes.fatId === first.customFats[0].id)).toBeDefined()
   })
 })
+
+describe('Abwandlungen des Formats', () => {
+  it('„artikel“, „stand“, „versandkosten_eur“: wird erkannt; Artikel ohne Preis werden gezählt', () => {
+    const loose = {
+      shop: { name: 'Markt', vor_ort: true, versandkosten_eur: null, versandkostenfrei_ab_eur: 30 },
+      stand: '2026-10-31',
+      artikel: [
+        { name: 'Olivenöl nativ extra 500 ml', art: 'fett', packungsgroesse: 500, einheit: 'ml', preis_eur: 4.99 },
+        { name: 'Rapsöl 1 l', art: 'fett', packungsgroesse: 1000, einheit: 'ml', preis_eur: null },
+      ],
+    }
+    const c = asShopCatalog(loose)!
+    expect(c.erstellt_am).toBe('2026-10-31')
+    const r = importShopCatalog(c, [])
+    expect(r.shop).toMatchObject({ local: true, freeShippingFrom: 30 })
+    expect(r.products).toHaveLength(1)
+    expect(r.withoutPrice).toBe(1)
+  })
+
+  it('nur Fett und gesättigte Fettsäuren auf dem Etikett: kein eigenes Fett (das Entscheidende fehlt)', () => {
+    const c = asShopCatalog({
+      shop: { name: 'Markt' },
+      artikel: [{ name: 'Sonnenblumenöl 1 l', art: 'fett', preis_eur: 1.89, naehrwerte: { fett: 92, gesaettigt: 10, einfach_ungesaettigt: null, mehrfach_ungesaettigt: null } }],
+    })!
+    const r = importShopCatalog(c, [])
+    expect(r.customFats).toEqual([])
+    expect(r.products[0].fatId).toBe('sunflower')
+  })
+})
