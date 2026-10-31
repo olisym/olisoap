@@ -22,6 +22,8 @@ export interface GuidedProps {
   temps: { lyeTemp?: number; fatTemp?: number; setLyeTemp: (v?: number) => void; setFatTemp: (v?: number) => void }
   cookStart?: number
   setCookStart: (t: number) => void
+  /** Rückmeldeknöpfe nur im Testmodus (Profil). */
+  feedbackMode: boolean
   feedback: Partial<Record<StepKind, Feedback>>
   setFeedback: (kind: StepKind, f: Feedback | undefined) => void
   /** Anleitung zum Ausdrucken, nur wenn die Menge dem gespeicherten Rezept entspricht. */
@@ -167,20 +169,22 @@ export function GuidedSieden(p: GuidedProps) {
       </div>
       {!gateOpen && <p className="text-right text-sm text-muted">{t('Erst abhaken, dann geht es weiter.')}</p>}
 
-      <fieldset className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
-        <legend className="sr-only">{t('Wie war dieser Schritt?')}</legend>
-        <span className="mr-1 text-sm text-muted" aria-hidden>
-          {t('Wie war dieser Schritt?')}
-        </span>
-        {feedbackOptions.map(([f, label]) => {
-          const on = p.feedback[step.kind] === f
-          return (
-            <button key={f} type="button" aria-pressed={on} className={`min-h-11 rounded-full border px-3 text-sm ${on ? 'border-accent bg-accent/15 text-accent' : 'border-line text-muted hover:text-ink'}`} onClick={() => p.setFeedback(step.kind, on ? undefined : f)}>
-              {label}
-            </button>
-          )
-        })}
-      </fieldset>
+      {p.feedbackMode && (
+        <fieldset className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
+          <legend className="sr-only">{t('Wie war dieser Schritt?')}</legend>
+          <span className="mr-1 text-sm text-muted" aria-hidden>
+            {t('Wie war dieser Schritt?')}
+          </span>
+          {feedbackOptions.map(([f, label]) => {
+            const on = p.feedback[step.kind] === f
+            return (
+              <button key={f} type="button" aria-pressed={on} className={`min-h-11 rounded-full border px-3 text-sm ${on ? 'border-accent bg-accent/15 text-accent' : 'border-line text-muted hover:text-ink'}`} onClick={() => p.setFeedback(step.kind, on ? undefined : f)}>
+                {label}
+              </button>
+            )
+          })}
+        </fieldset>
+      )}
     </div>
   )
 }

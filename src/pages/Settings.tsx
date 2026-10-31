@@ -8,7 +8,7 @@ import type { Mode } from '../core/profile'
 import { db } from '../db'
 import { citrateDose, dhToMmol, hardnessRange, mmolToDh } from '../core/water'
 import { fmt } from '../format'
-import { BATCH_FAT_KEY, EXTRA_ORDER_KEY, MODE_KEY, WATER_KEY, useMode, useWaterHardness, useWorkshop } from '../hooks'
+import { BATCH_FAT_KEY, EXTRA_ORDER_KEY, FEEDBACK_KEY, MODE_KEY, WATER_KEY, useFeedbackMode, useMode, useWaterHardness, useWorkshop } from '../hooks'
 import { useTheme, type Theme } from '../theme'
 
 /** Große Auswahlkachel als Radio-Button (Trefferfläche ≥ 44 px). */
@@ -31,6 +31,7 @@ export function Settings() {
   const w = useWorkshop()
   const [theme, setTheme] = useTheme()
   const water = useWaterHardness()
+  const feedbackMode = useFeedbackMode()
   const [unit, setUnit] = useState<'dH' | 'mmol'>('dH')
   if (!m || !w) return <p className="text-muted">{t('Lade …')}</p>
 
@@ -62,6 +63,13 @@ export function Settings() {
               ? t('Noch nicht gewählt: Experte, weil es schon Chargen gibt.')
               : t('Noch nicht gewählt: Einsteiger, solange es keine Chargen gibt.')}
         </p>
+        <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 border-t border-line pt-4 text-sm">
+          <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-[var(--color-accent)]" checked={feedbackMode} onChange={(e) => db.settings.put({ key: FEEDBACK_KEY, value: e.target.checked || undefined })} />
+          <span>
+            <span className="block font-medium">{t('Testmodus')}</span>
+            <span className="block text-muted">{t('In der Anleitung unter jedem Schritt „Klar / Zu viel auf einmal / Unklar“ antippen und am Ende als Text weiterschicken.')}</span>
+          </span>
+        </label>
       </Panel>
 
       <Panel title={t('Werkstatt')} icon={Wrench}>

@@ -21,6 +21,12 @@ export const BATCH_FAT_KEY = 'batchFat'
 export const EXTRA_ORDER_KEY = 'extraOrderCost'
 export const MODE_KEY = 'mode'
 export const WATER_KEY = 'waterHardness'
+/** Testmodus: Rückmeldeknöpfe in der Anleitung (für Tester, sonst aus). */
+export const FEEDBACK_KEY = 'feedbackMode'
+
+export function useFeedbackMode(): boolean {
+  return useLiveQuery(async () => (await db.settings.get(FEEDBACK_KEY))?.value === true) ?? false
+}
 
 /** Wasserhärte in °dH aus dem Profil; undefined = nicht eingetragen (oder noch am Laden). */
 export function useWaterHardness(): number | undefined {
