@@ -48,10 +48,18 @@ export function soapIngredients(r: RecipeResult): Ingredient[] {
 }
 
 /**
- * Vorschlag "Am besten verwenden bis": frühestes MHD der verwendeten Fette, höchstens 24 Monate nach dem Sieden,
- * bei vielen mehrfach ungesättigten Fettsäuren (> 10 %) höchstens 12 Monate. Eine Faustregel, keine Prüfung.
+ * Vorschlag "Am besten verwenden bis" aus dem, was in der Seife ranzig werden kann: freies Fett (Überfettung) mit
+ * mehrfach ungesättigten Fettsäuren. Das MHD der Öle zählt nicht: Es gilt für das Öl in der Flasche, nicht für die
+ * verseifte Seife (Entscheidung des Nutzers, 31.10.2026). Grenzen wie in der Gegenprobe (Linol-/Linolensäure 10 und
+ * 15 %, Überfettung 8 %); die Monatswerte sind eine Faustregel, keine Prüfung.
  */
-export function suggestBestUse(siedeDate: string, polyunsaturated: number, earliestFatMhd?: string): string {
-  const cap = addDays(siedeDate, polyunsaturated > 10 ? 365 : 730)
-  return earliestFatMhd && earliestFatMhd < cap ? earliestFatMhd : cap
+export function bestUseMonths(polyunsaturated: number, superfat = 0): number {
+  const rich = superfat >= 8
+  if (polyunsaturated > 15) return rich ? 6 : 9
+  if (polyunsaturated > 10) return rich ? 9 : 12
+  return 24
+}
+
+export function suggestBestUse(siedeDate: string, polyunsaturated: number, superfat = 0): string {
+  return addDays(siedeDate, Math.round((bestUseMonths(polyunsaturated, superfat) * 365) / 12))
 }

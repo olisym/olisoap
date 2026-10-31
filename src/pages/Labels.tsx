@@ -4,7 +4,6 @@ import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
 import { PageHeader, Panel } from '../components/ui'
-import { earliestFatBestBefore } from '../core/batch'
 import { calculate } from '../core/calc'
 import { soapIngredients, suggestBestUse } from '../core/label'
 import { barsLeft, db, type Batch } from '../db'
@@ -101,7 +100,7 @@ export function Labels() {
   const r = calculate(batch.recipe.input)
   const ingredients = soapIngredients(r)
   const missingInci = ingredients.filter((i) => !i.inci).map((i) => i.de)
-  const until = bestUse ?? batch.bestUse ?? suggestBestUse(batch.date, r.properties.polyunsaturated, earliestFatBestBefore(batch.deductions))
+  const until = bestUse ?? batch.bestUse ?? suggestBestUse(batch.date, r.properties.polyunsaturated, r.input.superfat)
   const n = count ?? Math.max(1, barsLeft(batch))
   // Gewicht: letzte Wägung des Probestücks, sonst Schnittgewicht abzüglich ca. 10 % Reifeverlust.
   const lastWeighing = [...batch.weighings].sort((a, b) => a.date.localeCompare(b.date)).at(-1)?.grams

@@ -256,7 +256,13 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
                 return (
                   <li key={n.key} className="flex items-center gap-3 py-2.5">
                     {ok ? <CircleCheck size={18} className="text-ok" aria-label="vorhanden" /> : <TriangleAlert size={18} className="text-warn" aria-label="fehlt" />}
-                    <span className="min-w-0 flex-1 truncate">{n.name}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {n.name}
+                      {/* Das MHD gilt für das Fett im Topf, nicht für die fertige Seife */}
+                      {plan.deductions.some((d) => d.key === n.key && d.bestBefore && d.bestBefore < today()) && (
+                        <span className="block text-xs text-warn">{t('MHD überschritten: vorher riechen, ranzig nicht verwenden')}</span>
+                      )}
+                    </span>
                     <span className="tabular-nums">{fmt(n.grams, n.grams < 100 ? 1 : 0)} g</span>
                     <span className={`w-24 text-right text-sm tabular-nums ${ok ? 'text-muted' : 'text-warn'}`}>{fmt(stock)} g da</span>
                   </li>

@@ -117,6 +117,14 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   `shelfLife.ts`). Wenn nicht: „Rezept mit mehr … entwerfen“ öffnet den Assistenten mit dem Fett als Lieblingsöl
   (`#/entwickeln?fett=…`).
 
+- **„Am besten bis“ der Seife** hängt an Linolsäure und Überfettung, nicht am MHD der Öle (Nutzer, 31.10.2026: das
+  MHD gilt für das Öl in der Flasche). Faustregel `bestUseMonths`: bis 10 % Linol-/Linolensäure 24 Monate, bis 15 %
+  12 (bei Überfettung ≥ 8 % 9), darüber 9 (6). Monatswerte sind Platzhalter zum Nachschärfen durch den Nutzer.
+  Das MHD gilt nur noch beim Sieden: Vorrats-Check warnt „MHD überschritten: vorher riechen“.
+- **Anbruchdatum automatisch**: erstes Abbuchen beim Sieden setzt `openedAt` (Siededatum). Migration v9 trägt es
+  für vorhandene Gebinde aus der frühesten Charge nach, die daraus abgebucht hat (deterministisch, kein
+  Sync-Konflikt). Migrationstest gegen eine echte v8-Datenbank (`fake-indexeddb`), mit Rücknahmeprobe.
+
 ## Einkauf (größter Ausbau bisher)
 
 - **Shopunabhängig**: Salandia hat kein Feed/Affiliate-Programm (freundliche Antwort: interessant, melden, wenn es
