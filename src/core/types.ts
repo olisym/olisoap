@@ -132,6 +132,8 @@ export interface TargetProfile {
   lyeConcentration?: Range
   /** Vorgaben für den Rezept-Assistenten; ohne sie ist die Seifenart dort nicht wählbar. */
   design?: DesignRules
+  /** Benutzung, die zum Gelingen gehört: Haarseife nur mit saurer Spülung, Rasierseife mit Pinsel. */
+  usage?: 'acidRinse' | 'brush'
 }
 
 /**

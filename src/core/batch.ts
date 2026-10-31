@@ -105,7 +105,7 @@ export interface CureStatus {
 }
 
 // Seife verliert beim Reifen vor allem Wasser. Wenn das Gewicht nicht mehr sinkt, ist sie "durch".
-// Das ist ein besserer Indikator als eine feste Wochenzahl, ersetzt aber nicht den Zungen- oder pH-Test.
+// Das ist ein besserer Indikator als eine feste Wochenzahl, ersetzt aber nicht den pH-Test.
 export function cureStatus(weighings: Weighing[]): CureStatus {
   const w = [...weighings].sort((a, b) => a.date.localeCompare(b.date))
   if (w.length < 2) return { stable: false }

@@ -1,15 +1,21 @@
 import { ArrowLeft, ArrowRight, Check, CircleCheck, FlaskConical, Printer, ShoppingCart, Timer, TriangleAlert } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
 import { Chip, EmptyState, PageHeader, Panel } from '../components/ui'
 import { feasibility, needsOf, planConsumption } from '../core/batch'
 import { calculate, type RecipeResult } from '../core/calc'
 import { correct } from '../core/correction'
+import { buildGuide, type StepKind } from '../core/guide'
 import { materialStock } from '../core/inventory'
+import { PROFILES_BY_ID } from '../data/profiles'
 import { createBatch, type Recipe } from '../db'
 import { fmt } from '../format'
-import { atBatchSize, groupRecipes, recipeFeasibility, today, useWorkshop } from '../hooks'
+import { atBatchSize, groupRecipes, recipeFeasibility, today, useExpert, useWorkshop } from '../hooks'
+import { feedbackText, type Feedback } from '../core/feedback'
+import { GuidedSieden } from './GuidedSieden'
+import { useStepContent } from './guideContent'
 
 const STEPS = ['Rezept', 'Menge & Vorrat', 'Sieden', 'Abschluss'] as const
 
@@ -90,6 +96,17 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
   const [cureWeeks, setCureWeeks] = useState<number | undefined>(recipe.input.lyeType === 'dual' ? 2 : recipe.input.process === 'hot' ? 3 : 5)
   const [deduct, setDeduct] = useState(true)
   const [busy, setBusy] = useState(false)
+  // Schritt für Schritt (Einsteiger) oder Liste (Experte); umschalten behält Häkchen und Ist-Werte
+  const { t } = useTranslation()
+  const expert = useExpert()
+  const [chosenView, setView] = useState<'steps' | 'list'>()
+  const view = chosenView ?? (expert ? 'list' : 'steps')
+  const [guideIndex, setGuideIndex] = useState(0)
+  const [cookStart, setCookStart] = useState<number>()
+  const [feedback, setFeedbackState] = useState<Partial<Record<StepKind, Feedback>>>({})
+  const [feedbackNote, setFeedbackNote] = useState('')
+  const [shared, setShared] = useState(false)
+  const stepContent = useStepContent()
 
   const scaled: Recipe = useMemo(() => ({ ...recipe, input: { ...recipe.input, totalFat: totalFat || 0 } }), [recipe, totalFat])
   const result = useMemo(() => calculate(scaled.input), [scaled])
@@ -98,6 +115,26 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
   const plan = planConsumption(w.inventory, needs)
   const ratio = recipe.input.totalFat ? calculate(recipe.input).batchWeight / recipe.input.totalFat : 1.4
   const bars = Math.floor(result.batchWeight / (recipe.barWeight ?? 100))
+  const profile = recipe.profileId ? PROFILES_BY_ID[recipe.profileId] : undefined
+  const guide = useMemo(() => buildGuide(result, profile?.usage), [result, profile])
+  const printLink = totalFat === recipe.input.totalFat ? `/rezepte/${recipe.id}/anleitung` : undefined
+
+  async function shareFeedback() {
+    const text = feedbackText({
+      header: t('Rückmeldung zu olisoap'),
+      recipe: `${recipe.name} (${recipe.input.process === 'hot' ? t('heiß') : t('kalt')})`,
+      build: __BUILD__,
+      feedback,
+      titles: Object.fromEntries(guide.steps.map((s) => [s.kind, stepContent(guide, s).title])),
+      labels: { clear: t('Klar'), much: t('Zu viel auf einmal'), unclear: t('Unklar') },
+      note: feedbackNote,
+      noteLabel: t('Notiz'),
+    })
+    // Teilen-Menü des Geräts (Messenger, Mail); sonst in die Zwischenablage
+    if (navigator.share) await navigator.share({ text }).catch(() => undefined)
+    else await navigator.clipboard?.writeText(text)
+    setShared(true)
+  }
 
   /** Im Einkauf mit diesem Rezept und dieser Menge als Bedarf weitermachen. */
   function planMissing() {
@@ -188,7 +225,46 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
       )}
 
       {step === 2 && (
+        <div className="mb-5 flex justify-center">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface-2 p-1" role="group" aria-label={t('Ansicht')}>
+            {(
+              [
+                ['steps', t('Schritt für Schritt')],
+                ['list', t('Liste')],
+              ] as const
+            ).map(([v, label]) => (
+              <button key={v} type="button" aria-pressed={view === v} className={`min-h-11 rounded-lg px-4 text-sm font-medium ${view === v ? 'bg-accent text-accent-ink' : 'text-muted hover:text-ink'}`} onClick={() => setView(v)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {step === 2 && view === 'steps' && (
+        <GuidedSieden
+          guide={guide}
+          result={result}
+          index={Math.min(guideIndex, guide.steps.length - 1)}
+          setIndex={setGuideIndex}
+          checked={checked}
+          toggle={(k) => setChecked((s) => (s.has(k) ? new Set([...s].filter((x) => x !== k)) : new Set([...s, k])))}
+          actual={actual}
+          setActual={(k, v) => setActual((a) => ({ ...a, [k]: v }))}
+          temps={{ lyeTemp, fatTemp, setLyeTemp, setFatTemp }}
+          cookStart={cookStart}
+          setCookStart={setCookStart}
+          feedback={feedback}
+          setFeedback={(k, f) => setFeedbackState((x) => ({ ...x, [k]: f }))}
+          printLink={printLink}
+          onBack={() => setStep(1)}
+          onDone={() => setStep(3)}
+        />
+      )}
+
+      {step === 2 && view === 'list' && (
         <SiedeModus
+          cook={{ start: cookStart, setStart: setCookStart }}
           result={result}
           checked={checked}
           toggle={(k) => setChecked((s) => (s.has(k) ? new Set([...s].filter((x) => x !== k)) : new Set([...s, k])))}
@@ -223,6 +299,18 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
                 Verbrauch aus dem Vorrat abbuchen
               </label>
             </div>
+            {Object.values(feedback).some(Boolean) && (
+              <div className="mt-6 space-y-3 rounded-xl border border-line bg-surface-2 p-4">
+                <p className="font-medium">{t('Deine Rückmeldung zu den Schritten')}</p>
+                <label className="label">
+                  {t('Was war schwierig? (freiwillig)')}
+                  <textarea className="field min-h-20" value={feedbackNote} onChange={(e) => setFeedbackNote(e.target.value)} />
+                </label>
+                <button className="btn" onClick={shareFeedback}>
+                  {shared ? t('Geteilt bzw. kopiert') : t('Rückmeldung teilen')}
+                </button>
+              </div>
+            )}
             <div className="mt-6 flex justify-between gap-2">
               <button className="btn-ghost" onClick={() => setStep(2)}>
                 <ArrowLeft size={18} /> Zurück
@@ -239,6 +327,7 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
 }
 
 interface ModusProps {
+  cook: { start?: number; setStart: (t: number) => void }
   result: RecipeResult
   checked: Set<string>
   toggle: (key: string) => void
@@ -253,7 +342,7 @@ interface ModusProps {
 }
 
 /** Großer, gut lesbarer Siede-Modus: abhaken, Ist-Werte eintragen, sofort nachrechnen. */
-function SiedeModus({ result, checked, toggle, actual, setActual, temps, notes, worksheet, onBack, onNext }: ModusProps) {
+function SiedeModus({ cook, result, checked, toggle, actual, setActual, temps, notes, worksheet, onBack, onNext }: ModusProps) {
   const r = result
   const acids = r.additives.filter((a) => a.additive.phase === 'lye' && a.lyeConsumed > 0)
   const lyeExtras = r.additives.filter((a) => a.additive.phase === 'lye' && a.lyeConsumed === 0)
@@ -262,11 +351,6 @@ function SiedeModus({ result, checked, toggle, actual, setActual, temps, notes, 
   // Heißverseifung: zurückgehaltene Fette und die Zusätze der Spur kommen erst nach dem Kochen.
   const hot = r.input.process === 'hot'
   const afterCook = new Set(r.input.fats.filter((f) => hot && f.afterCook).map((f) => f.fatId))
-
-  const fatActual = r.fats.map((l) => actual[`fat:${l.fat.id}`])
-  const lyeActual = r.lyeParts.length === 1 ? actual[`lye:${r.lyeParts[0].type}`] : undefined
-  const deviates = fatActual.some((v) => v !== undefined) || lyeActual !== undefined
-  const c = deviates ? correct(r, { fatGrams: fatActual, lyeWeighed: lyeActual }) : undefined
 
   const item = (k: string, name: string, grams: number, hint?: string, editable?: boolean) => (
     <ChecklistItem
@@ -310,28 +394,10 @@ function SiedeModus({ result, checked, toggle, actual, setActual, temps, notes, 
         </Panel>
       </div>
 
-      {c && (
-        <div className={`card ${Math.abs(c.addLye) < 0.05 ? '' : 'panel-glow'}`} role="status">
-          <p className="eyebrow mb-2">Abweichung erkannt</p>
-          {Math.abs(c.addLye) < 0.05 ? (
-            <p>Passt, keine Korrektur nötig. Überfettung {fmt(c.superfatActual, 1)} %.</p>
-          ) : c.addLye > 0 ? (
-            <p className="text-lg">
-              <b>{fmt(c.addLye, 1)} g {r.lyeParts.map((p) => p.type).join(' + ')}</b> und <b>{fmt(c.addWater, 1)} g Wasser</b> nachgeben,
-              <span className="text-muted"> oder so lassen: {fmt(c.superfatActual, 1)} % Überfettung.</span>
-            </p>
-          ) : (
-            <p className="text-lg">
-              Zu viel Lauge: Fette um <b>{fmt((c.fatScale - 1) * 100, 1)} %</b> erhöhen (
-              {r.fats.map((l, i) => `+${fmt(c.addFatGrams[i], 1)} g ${l.fat.name}`).join(', ')}).
-              {c.superfatActual < 0 && <span className="text-bad"> Ohne Korrektur bleibt freie Lauge!</span>}
-            </p>
-          )}
-        </div>
-      )}
+      <CorrectionNote result={r} actual={actual} />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        {hot && <CookPanel checked={checked} toggle={toggle} />}
+        {hot && <CookPanel checked={checked} toggle={toggle} start={cook.start} setStart={cook.setStart} />}
         {hot && (afterCook.size > 0 || trace.length > 0) && (
           <Panel title="Phase D · Nach dem Kochen">
             <p className="mb-3 text-sm text-muted">Etwas abkühlen lassen (ca. 70 °C), einrühren, zügig in die Form drücken und aufklopfen.</p>
@@ -386,7 +452,36 @@ function SiedeModus({ result, checked, toggle, actual, setActual, temps, notes, 
   )
 }
 
+/** Ist-Gewichte weichen ab: sofort sagen, was nachzugeben ist (oder dass es passt). */
+export function CorrectionNote({ result: r, actual }: { result: RecipeResult; actual: Record<string, number | undefined> }) {
+  const fatActual = r.fats.map((l) => actual[`fat:${l.fat.id}`])
+  const lyeActual = r.lyeParts.length === 1 ? actual[`lye:${r.lyeParts[0].type}`] : undefined
+  if (!fatActual.some((v) => v !== undefined) && lyeActual === undefined) return null
+  const c = correct(r, { fatGrams: fatActual, lyeWeighed: lyeActual })
+  return (
+    <div className={`card ${Math.abs(c.addLye) < 0.05 ? '' : 'panel-glow'}`} role="status">
+      <p className="eyebrow mb-2">Abweichung erkannt</p>
+      {Math.abs(c.addLye) < 0.05 ? (
+        <p>Passt, keine Korrektur nötig. Überfettung {fmt(c.superfatActual, 1)} %.</p>
+      ) : c.addLye > 0 ? (
+        <p className="text-lg">
+          <b>{fmt(c.addLye, 1)} g {r.lyeParts.map((p) => p.type).join(' + ')}</b> und <b>{fmt(c.addWater, 1)} g Wasser</b> nachgeben,
+          <span className="text-muted"> oder so lassen: {fmt(c.superfatActual, 1)} % Überfettung.</span>
+        </p>
+      ) : (
+        <p className="text-lg">
+          Zu viel Lauge: Fette um <b>{fmt((c.fatScale - 1) * 100, 1)} %</b> erhöhen (
+          {r.fats.map((l, i) => `+${fmt(c.addFatGrams[i], 1)} g ${l.fat.name}`).join(', ')}).
+          {c.superfatActual < 0 && <span className="text-bad"> Ohne Korrektur bleibt freie Lauge!</span>}
+        </p>
+      )}
+    </div>
+  )
+}
+
 interface ItemProps {
+  /** Wofür das Häkchen steht, für Screenreader („abgewogen“, „dazugegeben“). */
+  doneLabel?: string
   name: string
   grams: number
   hint?: string
@@ -396,26 +491,31 @@ interface ItemProps {
   onActual?: (v: number | undefined) => void
 }
 
-function ChecklistItem({ name, grams, hint, done, onToggle, actual, onActual }: ItemProps) {
+export function ChecklistItem({ doneLabel = 'abgewogen', name, grams, hint, done, onToggle, actual, onActual }: ItemProps) {
   return (
-    <li className={`flex items-center gap-3 rounded-xl border p-3 transition ${done ? 'border-ok/40 bg-ok/5' : 'border-line bg-surface-2'}`}>
+    <li className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 transition ${done ? 'border-ok/40 bg-ok/5' : 'border-line bg-surface-2'}`}>
       <button
         className={`grid size-11 shrink-0 place-items-center rounded-xl border-2 transition ${done ? 'border-ok bg-ok text-accent-ink' : 'border-line hover:border-accent'}`}
         onClick={onToggle}
         aria-pressed={done}
-        aria-label={`${name} abgewogen`}
+        aria-label={`${name} ${doneLabel}`}
       >
         {done && <Check size={22} />}
       </button>
       <div className="min-w-0 flex-1">
-        <p className={`truncate font-medium ${done ? 'text-muted line-through' : ''}`}>{name}</p>
+        <p className={`font-medium [overflow-wrap:anywhere] ${done ? 'text-muted line-through' : ''}`}>{name}</p>
         {hint && <p className="truncate text-xs text-muted">{hint}</p>}
       </div>
       <span className={`text-2xl font-semibold tabular-nums sm:text-3xl ${done ? 'text-muted' : ''}`}>
         {fmt(grams, grams < 100 ? 1 : 0)}
         <span className="ml-1 text-base font-normal text-muted">g</span>
       </span>
-      {onActual && <NumberField className="w-28" value={actual} digits={1} placeholder="Ist" ariaLabel={`${name} Ist-Wert`} onChange={onActual} />}
+      {/* Auf dem Handy in eigener Zeile, sonst bleibt vom Namen nur „Na…“ */}
+      {onActual && (
+        <span className="w-full pl-14 sm:w-28 sm:pl-0">
+          <NumberField value={actual} digits={1} placeholder="Ist" ariaLabel={`${name} Ist-Wert`} onChange={onActual} />
+        </span>
+      )}
     </li>
   )
 }
@@ -425,12 +525,23 @@ const COOK_STAGES: { key: string; name: string; hint: string }[] = [
   { key: 'cook:trace', name: 'Leichte Spur', hint: 'Mixen wie beim Kaltverfahren, dann Deckel drauf' },
   { key: 'cook:gel', name: 'Gel-Stadium', hint: 'Ränder werden glasig, Leim steigt auf: umrühren, Hitze runter' },
   { key: 'cook:vaseline', name: 'Vaseline-Stadium', hint: 'Durchscheinend, zäh, glänzend wie Kartoffelbrei mit Vaseline' },
-  { key: 'cook:test', name: 'Zungen- bzw. pH-Test', hint: 'Kein Bitzeln auf der Zunge, pH ca. 9–10. Sonst weiterkochen' },
+  { key: 'cook:test', name: 'pH-Test', hint: 'Teststreifen auf angefeuchteten Leim: pH 9–10 ist normal. Deutlich darüber: weiterkochen' },
 ]
 
+interface CookProps {
+  checked: Set<string>
+  toggle: (key: string) => void
+  /** Startzeit der Stoppuhr; liegt beim Aufrufer, damit sie beim Blättern weiterläuft. */
+  start?: number
+  setStart: (t: number) => void
+  stages?: { key: string; name: string; hint: string }[]
+  title?: string
+  /** Kurzer Hinweis oben; in der Schritt-Ansicht steht er schon im Schritttext. */
+  intro?: boolean
+}
+
 /** Heißverseifung: Stadien abhaken und Kochzeit stoppen. Kochen bei ca. 80 °C im Wasserbad oder Slow Cooker. */
-function CookPanel({ checked, toggle }: { checked: Set<string>; toggle: (key: string) => void }) {
-  const [start, setStart] = useState<number>()
+export function CookPanel({ checked, toggle, start, setStart, stages = COOK_STAGES, title = 'Phase C · Kochen', intro = true }: CookProps) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!start) return
@@ -440,7 +551,7 @@ function CookPanel({ checked, toggle }: { checked: Set<string>; toggle: (key: st
   const minutes = start ? Math.floor((now - start) / 60_000) : 0
   return (
     <Panel
-      title="Phase C · Kochen"
+      title={title}
       action={
         start ? (
           <span className="text-2xl font-semibold tabular-nums">{minutes} min</span>
@@ -457,9 +568,9 @@ function CookPanel({ checked, toggle }: { checked: Set<string>; toggle: (key: st
         )
       }
     >
-      <p className="mb-3 text-sm text-muted">Ca. 80 °C, Deckel drauf, nicht unbeaufsichtigt: Der Leim kann aufsteigen. Meist 45–90 Minuten.</p>
+      {intro && <p className="mb-3 text-sm text-muted">Ca. 80 °C, Deckel drauf, nicht unbeaufsichtigt: Der Leim kann aufsteigen. Meist 45–90 Minuten.</p>}
       <ul className="space-y-2">
-        {COOK_STAGES.map((s) => (
+        {stages.map((s) => (
           <li key={s.key} className={`flex items-center gap-3 rounded-xl border p-3 transition ${checked.has(s.key) ? 'border-ok/40 bg-ok/5' : 'border-line bg-surface-2'}`}>
             <button
               className={`grid size-11 shrink-0 place-items-center rounded-xl border-2 transition ${checked.has(s.key) ? 'border-ok bg-ok text-accent-ink' : 'border-line hover:border-accent'}`}

@@ -357,7 +357,7 @@ function Lifecycle({ batch, update }: { batch: Batch; update: (p: Partial<Batch>
       {current?.key === 'cut' && <CutForm batch={batch} update={update} />}
       {current?.key === 'test' && ready && (
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4">
-          <p className="flex-1 text-sm text-muted">Zungentest: kurz mit der Zungenspitze an die Seife. Prickelt es wie eine 9-V-Batterie, braucht sie noch Zeit.</p>
+          <p className="flex-1 text-sm text-muted">pH-Test: Seife anfeuchten, Teststreifen kurz auflegen. pH 9–10 ist normal für Seife; deutlich darüber, braucht sie noch Zeit.</p>
           <button className="btn-primary" onClick={() => update({ tested: true })}>
             <Check size={18} /> Test bestanden
           </button>

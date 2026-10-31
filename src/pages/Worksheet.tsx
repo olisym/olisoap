@@ -72,6 +72,11 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
         <button className="btn-primary" onClick={() => window.print()}>
           Drucken
         </button>
+        {!batch && (
+          <Link className="btn" to={`/rezepte/${recipe.id}/anleitung`}>
+            Anleitung Schritt für Schritt
+          </Link>
+        )}
       </div>
 
       <header className="border-b-2 border-ink pb-3">
@@ -130,7 +135,7 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
           </Phase>
           {hot ? (
             <>
-              <Phase title="Phase C: Kochen bei ca. 80 °C bis Vaseline-Stadium, Zungen-/pH-Test">
+              <Phase title="Phase C: Kochen bei ca. 80 °C bis Vaseline-Stadium, pH-Test">
                 <tr>
                   <td colSpan={5} className="py-1 text-xs text-muted">Beginn ____:____ Uhr · Gel ____:____ · Vaseline ____:____ · Test ok ____:____</td>
                 </tr>
@@ -185,7 +190,7 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
               ['Temp. Lauge / Fette (°C)', ''],
               ['Ausgeformt & geschnitten', ''],
               ['Reif ab', batch ? `${de(readyDate(batch))} (frühestens)` : ''],
-              ['pH- / Zungentest OK', ''],
+              ['pH-Test OK', ''],
             ] as const
           ).map(([l, v]) => (
             <div key={l} className="border-b border-ink/40 pb-1 text-muted">

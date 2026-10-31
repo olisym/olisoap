@@ -37,6 +37,7 @@ export const PROFILES: TargetProfile[] = [
       polyunsaturated: { max: 15 },
     },
     superfat: { min: 3, max: 7 },
+    usage: 'acidRinse',
     design: {
       // Nur ölsäurereiche Flüssigöle, Rizinus für stabilen Schaum
       fats: { 'sunflower-ho': 45, olive: 30, macadamia: 15, babassu: 35, coconut: 35, castor: 15, cocoa: 15, shea: 15, mango: 15 },
@@ -57,6 +58,7 @@ export const PROFILES: TargetProfile[] = [
       polyunsaturated: { max: 10 },
     },
     superfat: { min: 2, max: 6 },
+    usage: 'brush',
     design: {
       // Stearinsäure trägt den Schaum, Laurinsäure nur für den Anschaum
       fats: { 'stearic-acid': 50, babassu: 25, coconut: 25, shea: 25, mango: 20, cocoa: 15, castor: 10, avocado: 10 },
