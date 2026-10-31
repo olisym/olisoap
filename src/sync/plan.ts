@@ -5,6 +5,9 @@
 //   - lokal gelöscht: Hash gemerkt, Datensatz fehlt
 // Kommt vom Server eine Änderung an einem Datensatz, der auch lokal geändert wurde, gewinnt die lokale Fassung
 // (sie ist die zuletzt bearbeitete auf diesem Gerät und wird anschließend hochgeladen).
+// Ausnahme: unberührte Vorlagen eines frischen Geräts. Die hat niemand bearbeitet, der Server gewinnt.
+
+import { isPristineTemplate } from '../core/dedupe'
 
 export interface LocalRecord {
   key: string
@@ -35,6 +38,12 @@ export function planSync(local: LocalRecord[], known: Map<string, string>, remot
   const apply: RemoteChange[] = []
   let conflicts = 0
   for (const r of remote) {
+    const mine = localByKey.get(r.key)
+    if (changed.has(r.key) && r.key.startsWith('recipes/') && isPristineTemplate(mine?.value as { id?: string; updatedAt?: string })) {
+      changed.delete(r.key)
+      apply.push(r)
+      continue
+    }
     if (changed.has(r.key) || deleted.has(r.key)) {
       // Eigene, schon bekannte Fassung zurückbekommen ist kein Konflikt.
       if (r.hash !== undefined && r.hash === localByKey.get(r.key)?.hash) changed.delete(r.key)

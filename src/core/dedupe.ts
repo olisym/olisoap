@@ -4,9 +4,21 @@
 
 interface RecipeLike {
   id: string
+  name?: string
   baseId?: string
   createdAt?: string
   updatedAt?: string
+}
+
+/** Fester Zeitstempel für Vorlagen: gleiche Vorlage auf zwei Geräten = gleicher Inhalt, kein Konflikt. */
+export const TEMPLATE_DATE = '2026-01-01T00:00:00.000Z'
+
+/**
+ * Unberührte Vorlage: so, wie ein frisches Gerät sie anlegt (feste Kennung, fester Zeitstempel). Sie ist nur ein
+ * Vorschlag und darf weder Daten vom Server überschreiben noch neben einem gleichnamigen Rezept stehen bleiben.
+ */
+export function isPristineTemplate(r: { id?: string; updatedAt?: string } | undefined): boolean {
+  return !!r?.id?.startsWith('vorlage-') && r.updatedAt === TEMPLATE_DATE
 }
 
 /** JSON mit sortierten Schlüsseln, damit gleiche Inhalte gleich aussehen. */
@@ -46,8 +58,17 @@ export function findDuplicateRecipes(recipes: RecipeLike[], referencedIds: strin
   const rank = (a: RecipeLike, b: RecipeLike) =>
     Number(!a.id.startsWith('vorlage-')) - Number(!b.id.startsWith('vorlage-')) || (refs.get(b.id) ?? 0) - (refs.get(a.id) ?? 0) || a.id.localeCompare(b.id)
 
+  // Unberührte Vorlage neben einem gleichnamigen Rezept (z. B. eigene ältere Kopie mit anderer Kennung, oder die
+  // Vorlage wurde seitdem geändert): Die Vorlage weicht, das andere Rezept ist das, mit dem gearbeitet wurde.
+  const nameKey = (r: RecipeLike) => r.name?.trim().toLowerCase()
+  for (const p of recipes.filter(isPristineTemplate)) {
+    const others = recipes.filter((r) => r.id !== p.id && !isPristineTemplate(r) && nameKey(r) && nameKey(r) === nameKey(p)).sort(rank)
+    if (others.length) replace.set(p.id, others[0].id)
+  }
+
   // Erst Grundseifen, dann Varianten (deren Grundseife dann schon feststeht).
-  for (const level of [recipes.filter((r) => !r.baseId), recipes.filter((r) => r.baseId)]) {
+  const unmatched = (r: RecipeLike) => !replace.has(r.id)
+  for (const level of [recipes.filter((r) => !r.baseId && unmatched(r)), recipes.filter((r) => r.baseId && unmatched(r))]) {
     const groups = new Map<string, RecipeLike[]>()
     for (const r of level) {
       const key = signature(r, resolve(r.baseId))
@@ -58,6 +79,12 @@ export function findDuplicateRecipes(recipes: RecipeLike[], referencedIds: strin
       const [keep, ...rest] = [...group].sort(rank)
       for (const r of rest) replace.set(r.id, keep.id)
     }
+  }
+  // Ketten auflösen (a → b → c wird a → c), damit Chargen und Varianten nie auf ein gelöschtes Rezept zeigen
+  for (const [from, to] of replace) {
+    let target = to
+    for (let n = 0; replace.has(target) && n < recipes.length; n++) target = replace.get(target)!
+    replace.set(from, target)
   }
   return { remove: [...replace.keys()], replace }
 }

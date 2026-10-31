@@ -5,7 +5,7 @@ import { barCount } from './core/cost'
 import { packageGrams, pricePerKg, type Inventory, type Lot, type Product, type Purchase } from './core/inventory'
 import type { RecipeInput } from './core/types'
 import { TEMPLATES, type TemplateFamily } from './data/templates'
-import { findDuplicateRecipes } from './core/dedupe'
+import { findDuplicateRecipes, TEMPLATE_DATE } from './core/dedupe'
 import type { ShopTerms } from './core/shops'
 import { purchaseId } from './import/salandia'
 
@@ -145,8 +145,6 @@ const templateId = (name: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
-/** Fester Zeitstempel für Vorlagen: gleiche Vorlage auf zwei Geräten = gleicher Inhalt, kein Konflikt. */
-const TEMPLATE_DATE = '2026-01-01T00:00:00.000Z'
 
 export function familyRecipes(family: TemplateFamily): Recipe[] {
   const base: Recipe = { ...structuredClone(family.base), id: templateId(family.base.name), createdAt: TEMPLATE_DATE, updatedAt: TEMPLATE_DATE }

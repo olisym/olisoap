@@ -36,6 +36,21 @@ describe('Abgleich', () => {
     expect(p.push.map((x) => x.key)).toContain('recipes/b')
     expect(p.conflicts).toBe(1)
   })
+
+  it('frisches Gerät: unberührte Vorlage überschreibt nie den Server', () => {
+    const T = '2026-01-01T00:00:00.000Z'
+    const pristine = { id: 'vorlage-koerperseife', updatedAt: T }
+    const edited = { id: 'vorlage-koerperseife', updatedAt: '2026-10-20' }
+    // Frisches Gerät kennt noch keine Hashes: alles gilt als lokal neu
+    const fresh = planSync([{ key: 'recipes/vorlage-koerperseife', hash: 'tpl', value: pristine }], new Map(), [
+      { key: 'recipes/vorlage-koerperseife', deleted: false, value: edited, hash: 'srv' },
+    ])
+    expect(fresh.apply.map((r) => r.value)).toEqual([edited])
+    expect(fresh.push).toEqual([])
+    expect(fresh.conflicts).toBe(0)
+    // Ohne Gegenstück auf dem Server wird die Vorlage wie bisher hochgeladen
+    expect(planSync([{ key: 'recipes/vorlage-haarseife', hash: 'x', value: { id: 'vorlage-haarseife', updatedAt: T } }], new Map(), []).push).toHaveLength(1)
+  })
 })
 
 describe('Verschlüsselung', () => {
