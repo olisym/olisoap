@@ -54,11 +54,16 @@ export interface ShopCatalog {
  * Gibt den Katalog in der erwarteten Form zurück, sonst undefined.
  */
 export function asShopCatalog(data: unknown): ShopCatalog | undefined {
-  const d = data as Partial<ShopCatalog> & { products?: ShopItem[]; scraped_at?: string }
-  const produkte = Array.isArray(d?.produkte) ? d.produkte : Array.isArray(d?.products) ? d.products : undefined
+  type Loose = Partial<ShopCatalog> & { products?: ShopItem[]; artikel?: ShopItem[]; scraped_at?: string; stand?: string }
+  type LooseShop = ShopCatalog['shop'] & { versandkosten_eur?: number | null; versandkostenfrei_ab_eur?: number | null }
+  const d = data as Loose
+  const produkte = [d?.produkte, d?.products, d?.artikel].find(Array.isArray)
   if (!produkte || typeof d?.shop?.name !== 'string') return undefined
   if (d.format !== undefined && d.format !== SHOP_FORMAT) return undefined
-  return { format: SHOP_FORMAT, version: 1, erstellt_am: d.erstellt_am ?? d.scraped_at ?? new Date().toISOString().slice(0, 10), shop: d.shop, produkte }
+  // Abwandlungen, die Claude in Chrome gelegentlich schreibt („versandkosten_eur“ statt „versand_eur“ usw.)
+  const s = d.shop as LooseShop
+  const shop: ShopCatalog['shop'] = { ...s, versand_eur: s.versand_eur ?? s.versandkosten_eur, versandfrei_ab_eur: s.versandfrei_ab_eur ?? s.versandkostenfrei_ab_eur }
+  return { format: SHOP_FORMAT, version: 1, erstellt_am: d.erstellt_am ?? d.stand ?? d.scraped_at ?? new Date().toISOString().slice(0, 10), shop, produkte }
 }
 
 export function isShopCatalog(data: unknown): data is ShopCatalog {
@@ -85,6 +90,8 @@ export interface ShopCatalogImport {
   updates: { id: string; changes: Partial<Product> }[]
   /** Eigene Fette aus Nährwerten; die zugehörigen Artikel zeigen schon darauf. */
   customFats: CustomFat[]
+  /** Artikel ohne Preis (z. B. Supermarkt ohne Online-Preise): nicht übernommen. */
+  withoutPrice: number
 }
 
 /** Name ohne Packungsgröße am Ende („Olivenöl nativ extra 750 ml“ → „Olivenöl nativ extra“), Schreibweise bleibt. */
@@ -135,9 +142,11 @@ export function importShopCatalog(data: ShopCatalog, existing: Product[], stored
   const products: Product[] = []
   const updates: ShopCatalogImport['updates'] = []
   const customFats = new Map<string, CustomFat>()
+  let withoutPrice = 0
 
   for (const item of data.produkte) {
     const price = num(item.preis_eur)
+    if (item.name && price === undefined) withoutPrice++
     if (!item.name || price === undefined) continue
     const key = item.url ?? normName(item.name)
     if (seen.has(key)) continue
@@ -175,5 +184,5 @@ export function importShopCatalog(data: ShopCatalog, existing: Product[], stored
       ...(custom && { fatId: custom.id }),
     })
   }
-  return { shop, products, updates, customFats: [...customFats.values()] }
+  return { shop, products, updates, customFats: [...customFats.values()], withoutPrice }
 }

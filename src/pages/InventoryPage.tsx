@@ -481,7 +481,7 @@ function Import() {
     const inv = await loadInventory()
     const shopCatalog = asShopCatalog(data)
     if (shopCatalog) {
-      const { shop, products, updates, customFats } = importShopCatalog(shopCatalog, inv.products, await db.shops.get(shopCatalog.shop.name.trim()))
+      const { shop, products, updates, customFats, withoutPrice } = importShopCatalog(shopCatalog, inv.products, await db.shops.get(shopCatalog.shop.name.trim()))
       await db.transaction('rw', db.products, db.shops, db.customFats, async () => {
         await db.customFats.bulkPut(customFats)
         await db.products.bulkAdd(products)
@@ -490,7 +490,8 @@ function Import() {
       })
       const shipping = shop.shipping !== undefined ? `, Versand ${fmt(shop.shipping, 2)} €${shop.freeShippingFrom !== undefined ? `, frei ab ${fmt(shop.freeShippingFrom, 0)} €` : ''}` : ''
       const own = customFats.length ? `, ${customFats.length} eigene Fette mit Werten vom Etikett` : ''
-      return `${file.name}: ${shop.name}${shop.local ? ' (Laden vor Ort)' : ''}, ${products.length} neue Artikel, ${updates.length} Preise aktualisiert${shipping}${own}.`
+      const noPrice = withoutPrice ? ` ${withoutPrice} Artikel ohne Preis nicht übernommen.` : ''
+      return `${file.name}: ${shop.name}${shop.local ? ' (Laden vor Ort)' : ''}, ${products.length} neue Artikel, ${updates.length} Preise aktualisiert${shipping}${own}.${noPrice}`
     }
     if (isCatalog(data)) {
       const { products, updates } = importSalandiaCatalog(data, inv.products)

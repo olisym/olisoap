@@ -125,6 +125,9 @@ Arbeite die Seiten ruhig nacheinander ab, nicht parallel.
 3. Shop: "name": „Aldi Süd“ bzw. „Aldi Nord“, "url", "vor_ort": true, alle Versandfelder null.
 
 4. Regeln: Nichts schätzen oder ergänzen, insbesondere keine Nährwerte aus allgemeinen Tabellen. Unbekanntes = null.
+   Feldnamen genau wie in Teil B übernehmen („produkte“, „erstellt_am“, „versand_eur“, „versandfrei_ab_eur“).
+   Zeigt die Seite keinen Preis (manche Supermärkte nur im Markt), "preis_eur": null; solche Artikel übernimmt
+   olisoap nicht, den Preis trägt man dann im Einkauf beim Laden vor Ort ein.
 
 5. Ausgabe: ein JSON-Objekt im Format von Teil B, als Datei shop-[shopname]-[JJJJ-MM-TT].json
    (wenn das nicht geht, als einzelner Codeblock). Ein Artikel sieht so aus:
