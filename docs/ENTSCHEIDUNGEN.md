@@ -158,14 +158,16 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 3. ~~**Einsteiger-Anleitung**~~ erledigt (siehe unten). Nutzer liest die Texte gegen, Bruder testet als Neuling.
 4. **Fette tauschen** (gleicher Kern): Hinweis nur, wenn spürbar günstiger und Gegenprobe grün.
 5. **Bis versandfrei auffüllen**: nur mit Dingen, die ohnehin gebraucht werden und nicht verderben.
-6. Idee (Stand 31.10.2026, noch nicht geplant): **Tausch über Symbolon** (`~/mensch-als-republik`). Wer selbst macht,
-   macht zu viel. olisoap kennt den Überschuss ohne Eintippen (Chargen: Stück, reif ab; Vorrat: Menge, Haltbarkeit
-   offener Fette) und erzeugt daraus Angebote; Gruppe, Unterschriften, Tausch als Schuld in Ware und Übergabe als
-   Quittung liegen bei Symbolon (dort „Werkzeug“, neues Szenario „Tauschrunde“). Preise brauchen dort eine
-   Wertschicht, die es noch nicht gibt (`08-scope.md §3`) → zuerst Tausch ohne Preis. **Rechtlich:** fertige Seife
-   ist Kosmetikum; Abgabe im Rahmen einer Geschäftstätigkeit (auch kostenlos) ist Inverkehrbringen nach EU-KVO
-   1223/2009 (Sicherheitsbewertung, verantwortliche Person, CPNP, Kennzeichnung); private Geschenke unkritisch, wo
-   ein Basar „geschäftlich“ wird, nicht geklärt. Rohstoffe (Fette, Butter, Wachs) sind keine Kosmetik → damit
-   anfangen. Erster Schritt in olisoap unabhängig davon: Ansicht „Übrig“ (Seifenüberschuss, bald ablaufende Fette).
+6. Idee (Stand 31.10.2026, noch nicht geplant): **Tausch fertiger Produkte über Symbolon** (`~/mensch-als-republik`,
+   dort als Kandidat in `ROADMAP.md` 8.3 eingetragen). Wer selbst macht, macht zu viel; Selbermacher verschieben
+   ihre Produkte untereinander. Übrige Rohstoffe sind dem Nutzer zu wenig, das lohnt nicht. olisoap kennt den
+   Überschuss ohne Eintippen (Chargen: Stück, reif ab) und bucht schon heute aus (Abgang: selbst benutzt, verschenkt,
+   getauscht, verkauft, entsorgt); später Export als Angebot. Gruppe, Unterschriften, Tausch als Schuld in Ware und
+   Übergabe als Quittung liegen bei Symbolon (dort „Werkzeug“); Preise brauchen dort eine Wertschicht, die es noch
+   nicht gibt (`08-scope.md §3`) → Tausch ohne Preis. **Rechtlich offen:** fertige Seife ist Kosmetikum; Abgabe im
+   Rahmen einer Geschäftstätigkeit (auch kostenlos) ist Inverkehrbringen nach EU-KVO 1223/2009 (Sicherheitsbewertung,
+   verantwortliche Person, CPNP, Kennzeichnung). Private Geschenke unkritisch; wo ein Tausch unter Selbermachern
+   „geschäftlich“ wird, ist nicht geklärt und vor einem Bau zu klären.
+- Abgänge einer Charge haben eine Art (Auswahl) statt „verschenkt an …“: keine Namen Dritter in den Daten.
 7. Später: Cremes/Emulsionen (Aftershave-Balsam, passend zur Rasierseife), wasserfreie Produkte, Tinkturen, Haltbarkeit fertiger Produkte,
    Schnelleingabe „Preis gesehen“, Übersetzung (Texte stehen derzeit direkt im Code, ca. 1000 Stück).

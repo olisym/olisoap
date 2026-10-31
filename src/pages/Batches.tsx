@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Check, Scissors, Tag } from 'lucide-react'
 import { NumberField } from '../components/NumberField'
@@ -11,7 +12,7 @@ import { PROFILES_BY_ID } from '../data/profiles'
 import { recipeCost } from '../core/cost'
 import { materialPrice, type Inventory } from '../core/inventory'
 import type { RecipeResult } from '../core/calc'
-import { barsLeft, db, deleteBatch, isTub, loadInventory, readyDate, type Batch } from '../db'
+import { barsLeft, db, deleteBatch, isTub, loadInventory, readyDate, type Batch, type OutflowKind } from '../db'
 import { fmt } from '../format'
 
 export const today = () => new Date().toISOString().slice(0, 10)
@@ -225,8 +226,11 @@ export function BatchDetail() {
 }
 
 function Stock({ batch, left, update }: { batch: Batch; left: number; update: (p: Partial<Batch>) => void }) {
+  const { t } = useTranslation()
   const [count, setCount] = useState<number | undefined>(1)
+  const [kind, setKind] = useState<OutflowKind>('own')
   const [note, setNote] = useState('')
+  const kinds: Record<OutflowKind, string> = { own: t('selbst benutzt'), gift: t('verschenkt'), swap: t('getauscht'), sold: t('verkauft'), discarded: t('entsorgt') }
   return (
     <div className="card">
       <h2 className="mb-2 font-semibold">
@@ -234,12 +238,19 @@ function Stock({ batch, left, update }: { batch: Batch; left: number; update: (p
       </h2>
       <div className="flex flex-wrap items-center gap-2">
         <NumberField className="w-24" value={count} digits={0} suffix="Stk" ariaLabel="Anzahl" onChange={setCount} />
-        <input className="field min-w-0 flex-1" placeholder="verschenkt an … / selbst benutzt" value={note} onChange={(e) => setNote(e.target.value)} />
+        <select className="field w-40" value={kind} aria-label={t('Wohin')} onChange={(e) => setKind(e.target.value as OutflowKind)}>
+          {(Object.keys(kinds) as OutflowKind[]).map((k) => (
+            <option key={k} value={k}>
+              {kinds[k]}
+            </option>
+          ))}
+        </select>
+        <input className="field min-w-0 basis-full sm:basis-0 sm:flex-1" placeholder={t('Notiz (freiwillig)')} value={note} onChange={(e) => setNote(e.target.value)} />
         <button
           className="btn"
           disabled={!count}
           onClick={() => {
-            update({ outflows: [...batch.outflows, { date: today(), count: count!, note: note || undefined }] })
+            update({ outflows: [...batch.outflows, { date: today(), count: count!, kind, note: note || undefined }] })
             setNote('')
           }}
         >
@@ -252,7 +263,7 @@ function Stock({ batch, left, update }: { batch: Batch; left: number; update: (p
             <li key={i} className="flex gap-2">
               <span className="text-muted tabular-nums">{de(o.date)}</span>
               <span>{o.count} Stk</span>
-              <span className="text-muted">{o.note}</span>
+              <span className="text-muted">{[o.kind && kinds[o.kind], o.note].filter(Boolean).join(' · ')}</span>
               <button className="btn-icon ml-auto" aria-label="Eintrag entfernen" onClick={() => update({ outflows: batch.outflows.filter((_, j) => j !== i) })}>
                 ×
               </button>

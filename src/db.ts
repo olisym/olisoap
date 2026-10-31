@@ -43,10 +43,14 @@ export interface OrderItem {
   receivedAt?: string
 }
 
+/** Wohin Stücke gegangen sind. Bewusst ohne Empfänger: keine Namen Dritter in den Daten. */
+export type OutflowKind = 'own' | 'gift' | 'swap' | 'sold' | 'discarded'
+
 export interface Outflow {
   date: string
   count: number
-  /** z. B. "verschenkt an …", "selbst benutzt" */
+  /** Fehlt bei älteren Einträgen: dort steht die Art noch als Freitext in `note`. */
+  kind?: OutflowKind
   note?: string
 }
 

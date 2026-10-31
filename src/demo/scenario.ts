@@ -121,8 +121,8 @@ export async function loadDemoScenario(today = new Date().toISOString().slice(0,
     lyeTemp: 35,
     fatTemp: 38,
     outflows: [
-      { date: day(-26), count: 4, note: 'verschenkt' },
-      { date: day(-9), count: 2, note: 'selbst benutzt' },
+      { date: day(-26), count: 4, kind: 'gift' },
+      { date: day(-9), count: 2, kind: 'own' },
     ],
   })
   const hairCut = cut(hair, day(-37))
