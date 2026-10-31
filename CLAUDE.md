@@ -2,7 +2,9 @@
 
 Persönliche Werkstatt-App für DIY-Heimkosmetik (zuerst Seife, später Cremes, Balsame, Tinkturen, Deo, Bartwachs).
 Ein Nutzer, Hobby-Seifensieder mit über 10 Jahren Erfahrung im Kaltverfahren, Nerd, kein ausgebildeter Entwickler.
-Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
+Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antworten knapp halten.
+
+**Hintergrund, Entscheidungen, Lehren und Fahrplan: `docs/ENTSCHEIDUNGEN.md` – zu Beginn einer Sitzung lesen.**
 
 ## Leitlinien (vom Nutzer ausdrücklich gewünscht)
 
@@ -59,11 +61,19 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch.
 - Nach Änderungen: `npm test`, `npm run build`, `npx oxlint`; UI-Änderungen mit Playwright im Browser prüfen.
 - Commits auf Deutsch, aussagekräftig. Direkt auf `main` (Ein-Personen-Projekt).
 
-## Offene Themen (Stand v0.7)
+## Lokal entwickeln
 
-- Als Nächstes: Rezept-Assistent (touch, Regler statt Kennzahlen, Verfahren kalt/heiß/beides, Zutaten „nur was da ist“
-  oder „darf einkaufen“; Kern: Kennzahlen linear in Fettanteilen → Optimierung), dann „Fette tauschen“ (gleicher Kern),
-  dann „bis versandfrei auffüllen“. Hilfen erscheinen dort, wo die Frage entsteht, nicht als Funktionswand.
+- `npm install`, `npm run dev` (App), `npm test`, `npm run build`, `npx oxlint`.
+- Sync lokal testen: `php -S localhost:8080 -t dist` mit `OLISOAP_CONFIG=/pfad/zu/config.php`
+  (Vorlage `docs/olisoap-config.sample.php`, `dsn` z. B. `sqlite:/tmp/olisoap.sqlite`).
+- Echte Shop-Kataloge des Nutzers nur lokal verwenden (z. B. in einem temporären Test), nie committen.
+
+## Offene Themen (Stand v0.8)
+
+Fahrplan in `docs/ENTSCHEIDUNGEN.md`. Nächster Schritt: Seite „Profil & Einstellungen“ (Einsteiger/Experte), dann
+Rezept-Assistent (kalt/heiß/beides), dann Einsteiger-Anleitung, „Fette tauschen“, „bis versandfrei auffüllen“.
+Hilfen erscheinen dort, wo die Frage entsteht, nicht als Funktionswand.
+
 - Cremes/Emulsionen-Kern (Aftershave-Balsam als erstes Produkt), dann wasserfreie Produkte (Balsam, Bartwachs, Massageöl,
   Deo), Tinkturen (Myrrhe, Weihrauch). Haltbarkeit fertiger Produkte, „Retten“ ablaufender Zutaten.
 - Einkauf ist **shopunabhängig** (Salandia: kein Feed, kein Affiliate-Programm, Antwort freundlich, „melden, wenn es
