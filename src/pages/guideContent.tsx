@@ -43,7 +43,8 @@ export function useStepContent(): (guide: Guide, step: GuideStep) => StepContent
         bullets: [
           g.fineScale ? t('Digitalwaage, für die kleinen Mengen auf 0,1 g genau') : t('Digitalwaage, auf 1 g genau'),
           t('Stabmixer'),
-          ...(g.hot ? [t('Slow Cooker oder Topf im Wasserbad, mit Deckel'), t('pH-Teststreifen')] : [t('Thermometer')]),
+          t('Thermometer (Stab oder Infrarot; Infrarot misst nur die Oberfläche: vorher umrühren, nicht auf blankes Metall zielen)'),
+          ...(g.hot ? [t('Slow Cooker oder Topf im Wasserbad, mit Deckel'), t('pH-Teststreifen')] : []),
           t('Gefäße aus Edelstahl oder hitzefestem Kunststoff (PP, Recyclingcode 5). Kein Aluminium: Es reagiert mit Lauge und bildet Wasserstoff.'),
           g.tub ? t('Tiegel mit Deckel') : t('Silikonform oder mit Backpapier ausgelegte Kastenform'),
           t('Spatel, Löffel, Küchenpapier'),
