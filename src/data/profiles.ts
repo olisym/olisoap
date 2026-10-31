@@ -63,6 +63,7 @@ export const PROFILES: TargetProfile[] = [
       lauricMax: 25,
       targets: { cleansing: [13, 22], bubbly: [21, 30], creamy: [62, 48], hardness: [58, 72] },
       hotOils: ['avocado', 'shea'],
+      process: 'hot',
     },
   },
 ]

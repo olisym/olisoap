@@ -177,7 +177,7 @@ export function Designer() {
         <div className="space-y-5">
           <Panel>
             <div className="space-y-5">
-              <Segmented label={t('Seifenart')} value={profileId} options={DESIGNABLE.map((p) => [p.id, templateFor(p.id)?.name ?? p.name])} onChange={(v) => (setProfileId(v), setExcluded([]))} />
+              <Segmented label={t('Seifenart')} value={profileId} options={DESIGNABLE.map((p) => [p.id, templateFor(p.id)?.name ?? p.name])} onChange={(v) => (setProfileId(v), setExcluded([]), setProcess(DESIGNABLE.find((p) => p.id === v)?.design?.process ?? 'cold'))} />
               <Segmented
                 label={t('Verfahren')}
                 value={process}
