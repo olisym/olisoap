@@ -66,11 +66,12 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
 - `npm install`, `npm run dev` (App), `npm test`, `npm run build`, `npx oxlint`.
 - Sync lokal testen: `php -S localhost:8080 -t dist` mit `OLISOAP_CONFIG=/pfad/zu/config.php`
   (Vorlage `docs/olisoap-config.sample.php`, `dsn` z. B. `sqlite:/tmp/olisoap.sqlite`).
-- Echte Shop-Kataloge des Nutzers nur lokal verwenden (z. B. in einem temporären Test), nie committen.
+- Echte Shop-Kataloge des Nutzers liegen in `daten-lokal/` (gitignored), nur lokal verwenden, nie committen.
 
 ## Offene Themen (Stand v0.8)
 
-Fahrplan in `docs/ENTSCHEIDUNGEN.md`. Nächster Schritt: Seite „Profil & Einstellungen“ (Einsteiger/Experte), dann
+Fahrplan in `docs/ENTSCHEIDUNGEN.md`. Erledigt: Seite „Profil & Einstellungen“ (`#/profil`, Modus Einsteiger/Experte
+über `useMode()`/`useExpert()`, Schlüssel `mode`; ohne Wahl abgeleitet: Chargen vorhanden → Experte). Nächster Schritt:
 Rezept-Assistent (kalt/heiß/beides), dann Einsteiger-Anleitung, „Fette tauschen“, „bis versandfrei auffüllen“.
 Hilfen erscheinen dort, wo die Frage entsteht, nicht als Funktionswand.
 

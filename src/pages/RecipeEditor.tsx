@@ -16,6 +16,7 @@ import { PROFILES, PROFILES_BY_ID } from '../data/profiles'
 import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
 import { LabelText } from '../components/ui'
+import { useExpert } from '../hooks'
 
 const WATER_LABELS: Record<WaterMode['mode'], string> = {
   percentOfFats: 'Wasser in % der Fette',
@@ -31,6 +32,7 @@ export function RecipeEditor() {
   const base = useLiveQuery(() => (stored?.baseId ? db.recipes.get(stored.baseId) : undefined), [stored?.baseId])
   const bases = useLiveQuery(() => db.recipes.filter((r) => !r.baseId).toArray())
   const navigate = useNavigate()
+  const expert = useExpert()
 
   useEffect(() => {
     if (stored && stored.id !== draft?.id) setDraft(stored)
@@ -97,9 +99,9 @@ export function RecipeEditor() {
             Sieden
           </button>
         ) : (
-          <Link className="btn-primary" to={`/sieden/${draft.id}`}>
-            Sieden
-          </Link>
+            <Link className="btn-primary" to={`/sieden/${draft.id}`}>
+              Sieden
+            </Link>
         )}
         <Link className="btn" to={`/rezepte/${draft.id}/druck`}>
           Arbeitsblatt
@@ -145,7 +147,7 @@ export function RecipeEditor() {
               <NumberField value={input.totalFat} digits={0} suffix="g" onChange={(v) => setInput({ totalFat: v ?? 0 })} />
             </label>
             <label className="label">
-              <LabelText hint="Anteil der Fette, der absichtlich unverseift bleibt: Puffer gegen Wiegefehler, milder auf der Haut. Üblich 5–8 %, Haarseife eher 3–5 %.">Überfettung</LabelText>
+              <LabelText initiallyOpen={!expert} hint="Anteil der Fette, der absichtlich unverseift bleibt: Puffer gegen Wiegefehler, milder auf der Haut. Üblich 5–8 %, Haarseife eher 3–5 %.">Überfettung</LabelText>
               <NumberField value={input.superfat} digits={1} suffix="%" onChange={(v) => setInput({ superfat: v ?? 0 })} />
             </label>
             <label className="label">
@@ -164,7 +166,8 @@ export function RecipeEditor() {
               >
                 <option value="NaOH">NaOH (feste Seife)</option>
                 <option value="KOH">KOH (Flüssigseife)</option>
-                <option value="dual">NaOH + KOH (z. B. Rasierseife)</option>
+                {/* Einsteiger: Mischlauge nur, wenn das Rezept sie schon nutzt (z. B. Rasierseife-Vorlage) */}
+                {(expert || input.lyeType === 'dual') && <option value="dual">NaOH + KOH (z. B. Rasierseife)</option>}
               </select>
             </label>
             <label className="label">
@@ -195,7 +198,14 @@ export function RecipeEditor() {
               </>
             )}
             <label className="label">
-              <LabelText hint="Wie viel Wasser zur Lauge kommt. Üblich sind 30–35 % Laugenkonzentration. Weniger Wasser: schneller fest, weniger Zeit zum Arbeiten.">
+              <LabelText
+                initiallyOpen={!expert}
+                hint={input.water.mode === 'concentration' ? 'Anteil der Lauge an Lauge + Wasser. Üblich sind 30–35 %. Höher (weniger Wasser): schneller fest, weniger Zeit zum Arbeiten.' : 'Wie viel Wasser zur Lauge kommt. Üblich sind 30–35 % Laugenkonzentration. Weniger Wasser: schneller fest, weniger Zeit zum Arbeiten.'}
+              >
+                {/* Einsteiger: ein Wassermodus; ein Rezept mit anderem Modus behält ihn und zeigt ihn an */}
+                {!expert ? (
+                  WATER_LABELS[input.water.mode]
+                ) : (
                 <select
                   className="field-inline"
                   value={input.water.mode}
@@ -210,6 +220,7 @@ export function RecipeEditor() {
                     </option>
                   ))}
                 </select>
+                )}
               </LabelText>
               <NumberField
                 value={input.water.value}
@@ -220,7 +231,7 @@ export function RecipeEditor() {
             </label>
           </div>
 
-          <FatTable draft={draft} setInput={setInput} />
+          <FatTable draft={draft} setInput={setInput} expert={expert} />
           <AdditiveTable draft={draft} setInput={setInput} />
 
           <label className="label card">
@@ -288,13 +299,15 @@ interface TableProps {
   setInput: (patch: Partial<RecipeInput>) => void
 }
 
-function FatTable({ draft, setInput }: TableProps) {
+function FatTable({ draft, setInput, expert }: TableProps & { expert: boolean }) {
   const { input } = draft
   const sum = input.fats.reduce((s, f) => s + f.percent, 0)
   const update = (i: number, patch: Partial<RecipeInput['fats'][number]>) =>
     setInput({ fats: input.fats.map((f, j) => (j === i ? { ...f, ...patch } : f)) })
   const used = new Set(input.fats.map((f) => f.fatId))
   const hot = input.process === 'hot'
+  // Einsteiger: VZ-Spalte nur, wenn das Rezept eigene Werte hat, damit nichts unsichtbar mitrechnet
+  const showSap = expert || input.fats.some((f) => f.sapKohOverride !== undefined)
 
   return (
     <div className="card overflow-x-auto">
@@ -305,9 +318,11 @@ function FatTable({ draft, setInput }: TableProps) {
             <th className="pb-2 font-normal">Fett</th>
             <th className="w-24 pb-2 font-normal">Anteil</th>
             <th className="w-28 pb-2 font-normal">Menge</th>
-            <th className="w-28 pb-2 font-normal">
-              <LabelText hint="Verseifungszahl: mg KOH je g Fett, aus der Fettdatenbank. Nur ändern, wenn das Analysezertifikat abweicht.">VZ</LabelText>
-            </th>
+            {showSap && (
+              <th className="w-28 pb-2 font-normal">
+                <LabelText hint="Verseifungszahl: mg KOH je g Fett, aus der Fettdatenbank. Nur ändern, wenn das Analysezertifikat abweicht.">VZ</LabelText>
+              </th>
+            )}
             {hot && (
               <th className="w-24 pb-2 font-normal">
                 <LabelText hint="Erst nach dem Kochen einrühren, als gezieltes Überfettungsöl. Höchstens so viel, wie überfettet wird.">Danach</LabelText>
@@ -342,15 +357,17 @@ function FatTable({ draft, setInput }: TableProps) {
                     onChange={(v) => input.totalFat > 0 && update(i, { percent: ((v ?? 0) / input.totalFat) * 100 })}
                   />
                 </td>
-                <td className="pr-2">
-                  <NumberField
-                    value={f.sapKohOverride}
-                    digits={1}
-                    placeholder={fat ? String(fat.sapKoh) : ''}
-                    ariaLabel="Verseifungszahl"
-                    onChange={(v) => update(i, { sapKohOverride: v })}
-                  />
-                </td>
+                {showSap && (
+                  <td className="pr-2">
+                    <NumberField
+                      value={f.sapKohOverride}
+                      digits={1}
+                      placeholder={fat ? String(fat.sapKoh) : ''}
+                      ariaLabel="Verseifungszahl"
+                      onChange={(v) => update(i, { sapKohOverride: v })}
+                    />
+                  </td>
+                )}
                 {hot && (
                   <td className="pr-2 text-center">
                     <input
@@ -388,14 +405,18 @@ function FatTable({ draft, setInput }: TableProps) {
               {fmt(sum, 1)} %
             </td>
             <td className="text-right tabular-nums text-muted">{fmt((input.totalFat * sum) / 100)} g</td>
-            <td colSpan={hot ? 3 : 2} className="text-right text-xs text-muted">
-              {sapBasis(input.lyeType)}-VZ Ø{' '}
-              {fmt(
-                input.fats.reduce((s, f) => {
-                  const fat = FATS.find((x) => x.id === f.fatId)
-                  return s + (fat ? sapValue(f.sapKohOverride ?? fat.sapKoh, sapBasis(input.lyeType)) * f.percent : 0)
-                }, 0) / (sum || 1),
-                4,
+            <td colSpan={1 + (hot ? 1 : 0) + (showSap ? 1 : 0)} className="text-right text-xs text-muted">
+              {showSap && (
+                <>
+                  {sapBasis(input.lyeType)}-VZ Ø{' '}
+                  {fmt(
+                    input.fats.reduce((s, f) => {
+                      const fat = FATS.find((x) => x.id === f.fatId)
+                      return s + (fat ? sapValue(f.sapKohOverride ?? fat.sapKoh, sapBasis(input.lyeType)) * f.percent : 0)
+                    }, 0) / (sum || 1),
+                    4,
+                  )}
+                </>
               )}
             </td>
           </tr>

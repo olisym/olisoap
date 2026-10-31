@@ -40,6 +40,11 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 - Rezepte: Grundseife + Varianten. Vorlagen haben feste Kennungen (`vorlage-…`), sonst verdoppelt der Sync sie.
 - **Kein „für wen“** an Chargen/Etiketten (ausdrücklicher Wunsch). Keine Namen Dritter in Daten oder Code.
 - Recipe-Prüfungen heißen „Gegenprobe“.
+- **Einsteiger/Experte** ändert nur die Anzeige, nie Rechnung oder Daten. Einsteiger: keine VZ-Spalte, keine
+  Mischlauge, nur Laugenkonzentration, Hilfen bei Überfettung/Wasser offen. Was ein Rezept schon nutzt (eigene VZ,
+  Mischlauge, anderer Wassermodus), bleibt sichtbar, damit nichts unsichtbar mitrechnet. Der Modus wird beim ersten
+  Start bewusst nicht gespeichert (sonst überschreibt ein frisches Gerät beim Sync die Wahl), sondern abgeleitet.
+  Hell/dunkel gilt je Gerät (localStorage), alles andere wird synchronisiert.
 - Demo (`#/demo`): erfundene Beispiel-Shops und eine Beispiel-Werkstatt relativ zum heutigen Datum, nie echte
   Shop-Daten verteilen.
 
@@ -75,13 +80,12 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 - Rasterzellen brauchen `min-width: 0` (global in `index.css`), sonst scrollt das Handy seitlich.
 - Prüfen im Browser mit Playwright gegen `npm run build` + `php -S localhost:PORT -t dist`; Sync lokal mit SQLite:
   `OLISOAP_CONFIG=/pfad/config.php` (`dsn` sqlite, `register_code`). Echte Shop-Dateien nur in temporären Tests.
-- Zugriff auf Shop-Websites war in der Cloud-Umgebung gesperrt; lokal mit Claude Code geht es.
+- Zugriff auf Shop-Websites war in der Cloud-Umgebung gesperrt; lokal mit Claude Code geht es. Eigene Kataloge
+  liegen in `daten-lokal/` (gitignored). Lokal ist kein PHP installiert: UI-Prüfung mit `npx vite preview`.
 
 ## Fahrplan (Reihenfolge abgestimmt)
 
-1. **Profil & Einstellungen** (eigene Seite): Modus Einsteiger/Experte, Sudgröße, Aufwand je Bestellung.
-   Einsteiger: mehr Erklärung, weniger Profi-Felder (keine eigene VZ, keine Mischlauge, ein Wassermodus).
-   Neue Nutzer starten als Einsteiger; der Nutzer selbst ist Experte.
+1. ~~**Profil & Einstellungen**~~ erledigt (`#/profil`, Zahnrad in der Leiste).
 2. **Rezept-Assistent** (Rezepte → „Neue Seife zusammenstellen“, Kachel „Entwickeln“): touch-tauglich, wenige Regler mit
    Alltagswörtern (mild ↔ kräftig, cremig ↔ großblasig, weich ↔ hart, günstig ↔ egal), Verfahren kalt/heiß/beides,
    „nur was da ist“ oder „darf einkaufen“, Ausschlüsse und Lieblingsöl, Ergebnis live mit Gegenprobe, Kosten,

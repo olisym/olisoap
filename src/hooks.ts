@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { feasibility, needsOf, type Feasibility } from './core/batch'
 import { calculate } from './core/calc'
 import type { Inventory } from './core/inventory'
+import { effectiveMode, type Mode } from './core/profile'
 import { db, loadInventory, type Batch, type OrderItem, type Recipe } from './db'
 
 export interface Workshop {
@@ -18,6 +19,20 @@ export interface Workshop {
 /** Einstellungsschlüssel (Tabelle settings, wird synchronisiert). */
 export const BATCH_FAT_KEY = 'batchFat'
 export const EXTRA_ORDER_KEY = 'extraOrderCost'
+export const MODE_KEY = 'mode'
+
+/** Bedienmodus, gewählt oder abgeleitet; `chosen` sagt, ob schon gewählt wurde. */
+export function useMode(): { mode: Mode; chosen: boolean } | undefined {
+  return useLiveQuery(async () => {
+    const stored = (await db.settings.get(MODE_KEY))?.value
+    return { mode: effectiveMode(stored, await db.batches.count()), chosen: stored !== undefined }
+  })
+}
+
+/** Kurzform für Seiten, die nur wissen müssen, ob Profi-Felder sichtbar sind. Solange unbekannt: wie bisher alles zeigen. */
+export function useExpert(): boolean {
+  return useMode()?.mode !== 'einsteiger'
+}
 
 /** Alle Werkstattdaten auf einmal, live aktualisiert. */
 export function useWorkshop(): Workshop | undefined {

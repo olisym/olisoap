@@ -124,10 +124,12 @@ export function EmptyState({ icon: Icon, title, children, action }: { icon: Luci
 
 /**
  * Feldname mit optionaler Kurzhilfe: „?“ klappt einen Satz direkt unter dem Namen auf.
- * Sichtbar klein, Trefferfläche 44 px. Gehört in ein <label>, der Hilfetext bleibt dort lesbar, wo die Frage entsteht.
+ * Sichtbar klein, Trefferfläche 44 px. `initiallyOpen` zeigt die Hilfe gleich (Einsteiger-Modus). Gehört in ein <label>, der Hilfetext bleibt dort lesbar, wo die Frage entsteht.
  */
-export function LabelText({ children, hint }: { children: ReactNode; hint?: ReactNode }) {
-  const [open, setOpen] = useState(false)
+export function LabelText({ children, hint, initiallyOpen = false }: { children: ReactNode; hint?: ReactNode; initiallyOpen?: boolean }) {
+  // Folgt `initiallyOpen` (der Modus lädt asynchron), bis man selbst klickt
+  const [toggled, setOpen] = useState<boolean>()
+  const open = toggled ?? initiallyOpen
   const id = useId()
   return (
     <>
