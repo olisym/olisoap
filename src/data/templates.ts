@@ -11,7 +11,7 @@ export interface TemplateFamily {
 const citrate = {
   additiveId: 'citric-anhydrous',
   percentOfFats: 1.5,
-  reason: 'Hartes Wasser (Duisburg ca. 12–17 °dH): Natriumcitrat bindet einen Teil von Ca/Mg im Schaum.',
+  reason: 'Hartes Wasser: Natriumcitrat bindet einen Teil von Ca/Mg im Schaum.',
 }
 
 export const TEMPLATES: TemplateFamily[] = [
