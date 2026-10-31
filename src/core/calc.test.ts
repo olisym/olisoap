@@ -112,6 +112,25 @@ describe('evaluate', () => {
     expect(msgs.some((m) => m.includes('Komplexbildner'))).toBe(true)
   })
 
+  it('Heißverseifung: Fett nach dem Kochen höchstens so viel wie Überfettung, Lauge unverändert', () => {
+    const hp: RecipeInput = {
+      ...base,
+      process: 'hot',
+      superfat: 6,
+      water: { mode: 'concentration', value: 30 },
+      fats: [
+        { fatId: 'olive', percent: 94 },
+        { fatId: 'avocado', percent: 6, afterCook: true },
+      ],
+    }
+    // Die Lauge rechnet über alle Fette, egal wann sie in den Topf kommen.
+    expect(calculate(hp).lyePure).toBeCloseTo(calculate({ ...hp, process: 'cold', fats: hp.fats.map((f) => ({ ...f, afterCook: false })) }).lyePure, 6)
+    expect(evaluate(calculate(hp)).some((f) => f.severity === 'error')).toBe(false)
+    const tooMuch = { ...hp, fats: [{ fatId: 'olive', percent: 90 }, { fatId: 'avocado', percent: 10, afterCook: true }] }
+    expect(evaluate(calculate(tooMuch)).some((f) => f.severity === 'error' && f.message.includes('zu viel Lauge'))).toBe(true)
+    expect(evaluate(calculate({ ...hp, water: { mode: 'concentration', value: 36 } })).some((f) => f.message.includes('fließfähiger'))).toBe(true)
+  })
+
   it('warnt bei hohem Linolsäureanteil', () => {
     const r = calculate({ ...base, fats: [{ fatId: 'sunflower', percent: 100 }] })
     expect(evaluate(r).some((f) => f.message.includes('Linol'))).toBe(true)

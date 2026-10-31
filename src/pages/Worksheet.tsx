@@ -57,6 +57,8 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
   const fatPhase = r.additives.filter((a) => a.additive.phase === 'fats')
   const tracePhase = r.additives.filter((a) => a.additive.phase === 'trace')
   const acids = lyePhase.filter((a) => a.lyeConsumed > 0)
+  const hot = input.process === 'hot'
+  const isAfterCook = (fatId: string) => hot && input.fats.some((f) => f.fatId === fatId && f.afterCook)
   const acidShare = r.lyePure > 0 ? r.lyeForAdditives / r.lyePure : 0
 
   return (
@@ -117,19 +119,39 @@ function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch;
               ))}
           </Phase>
           <Phase title="Phase B: Fette & Öle">
-            {r.fats.map((l) => (
+            {r.fats.filter((l) => !isAfterCook(l.fat.id)).map((l) => (
               <Row key={l.fat.id} name={l.fat.name} grams={l.grams} share={`${fmt(l.percent, 1)} %`} />
             ))}
             {fatPhase.map((a) => (
               <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note={a.reason} />
             ))}
           </Phase>
-          {tracePhase.length > 0 && (
-            <Phase title="Phase C: Zugabe in der Spur">
-              {tracePhase.map((a) => (
-                <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note={a.reason} />
-              ))}
-            </Phase>
+          {hot ? (
+            <>
+              <Phase title="Phase C: Kochen bei ca. 80 °C bis Vaseline-Stadium, Zungen-/pH-Test">
+                <tr>
+                  <td colSpan={5} className="py-1 text-xs text-muted">Beginn ____:____ Uhr · Gel ____:____ · Vaseline ____:____ · Test ok ____:____</td>
+                </tr>
+              </Phase>
+              {(tracePhase.length > 0 || r.fats.some((l) => isAfterCook(l.fat.id))) && (
+                <Phase title="Phase D: Nach dem Kochen (ca. 70 °C)">
+                  {r.fats.filter((l) => isAfterCook(l.fat.id)).map((l) => (
+                    <Row key={l.fat.id} name={l.fat.name} grams={l.grams} share={`${fmt(l.percent, 1)} %`} note="Überfettungsöl" />
+                  ))}
+                  {tracePhase.map((a) => (
+                    <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note={a.reason} />
+                  ))}
+                </Phase>
+              )}
+            </>
+          ) : (
+            tracePhase.length > 0 && (
+              <Phase title="Phase C: Zugabe in der Spur">
+                {tracePhase.map((a) => (
+                  <Row key={a.additive.id} name={a.additive.name} grams={a.grams} share={pctOfFats(a)} note={a.reason} />
+                ))}
+              </Phase>
+            )
           )}
         </tbody>
       </table>

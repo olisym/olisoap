@@ -68,6 +68,36 @@ export const TEMPLATES: TemplateFamily[] = [
           additives: [citrate],
         },
       },
+      {
+        name: 'Körperseife heiß',
+        description: 'Gleiche Fettmischung, heiß verseift: nach etwa einer Woche benutzbar, Avocadoöl als Überfettung nach dem Kochen.',
+        profileId: 'body-sensitive',
+        barWeight: 125,
+        notes:
+          'Heißverseifung: Leim bis zur Spur mixen, dann im Wasserbad oder Slow Cooker bei ca. 80 °C mit Deckel kochen, ' +
+          'bis er durchscheinend und vaselineartig ist und der Zungen- bzw. pH-Test passt (meist 45–90 Minuten). ' +
+          'Danach etwas abkühlen lassen, Avocadoöl und ggf. ätherisches Öl einrühren und zügig in die Form drücken, ' +
+          'aufklopfen, damit keine Luftlöcher bleiben. Mehr Wasser (30 % Laugenkonzentration) hält den Leim formbar. ' +
+          'Ob das nach dem Kochen zugegebene Öl wirklich unverseift bleibt, ist nicht sicher belegt: Ein Teil wird im heißen ' +
+          'Leim noch verseift. Die Überfettung insgesamt stimmt trotzdem.',
+        input: {
+          totalFat: 1000,
+          lyeType: 'NaOH',
+          lyePurity: 100,
+          superfat: 7,
+          water: { mode: 'concentration', value: 30 },
+          process: 'hot',
+          fats: [
+            { fatId: 'shea', percent: 30 },
+            { fatId: 'olive', percent: 30 },
+            { fatId: 'babassu', percent: 18 },
+            { fatId: 'cocoa', percent: 10 },
+            { fatId: 'castor', percent: 7 },
+            { fatId: 'avocado', percent: 5, afterCook: true },
+          ],
+          additives: [citrate],
+        },
+      },
     ],
   },
   {

@@ -48,6 +48,19 @@ function baseRules(r: RecipeResult): Finding[] {
     out.push({ severity: 'warning', message: `Überfettung ${input.superfat} % bei ${pufa.toFixed(1)} % Linol-/Linolensäure: Das freie Fett ist oxidationsanfällig. Überfettung senken oder ungesättigte Öle reduzieren.` })
   if (pufa > 10 && !r.additives.some((a) => CHELATORS.includes(a.additive.id)))
     out.push({ severity: 'info', message: 'Kein Komplexbildner (Zitronensäure/Natriumcitrat): Metallspuren aus Wasser und Werkzeug können die Ranzigkeit beschleunigen.' })
+  if (input.process === 'hot') {
+    const after = input.fats.filter((f) => f.afterCook).reduce((sum, f) => sum + f.percent, 0)
+    if (after > input.superfat + 0.05)
+      out.push({
+        severity: 'error',
+        message: `Nach dem Kochen ${after.toFixed(1)} % Fett, aber nur ${input.superfat} % Überfettung: Der gekochte Leim hat zu viel Lauge. Höchstens so viel Fett zurückhalten, wie überfettet wird.`,
+      })
+    // Erfahrungswert aus der HP-Praxis, keine Messung: mehr Wasser hält den gekochten Leim länger formbar.
+    if (r.lyeConcentration > 33)
+      out.push({ severity: 'info', message: `Heißverseifung mit ${r.lyeConcentration.toFixed(1)} % Laugenkonzentration: Etwas mehr Wasser (ca. 28–30 %) hält den Leim nach dem Kochen fließfähiger und leichter in die Form zu drücken.` })
+  } else if (input.fats.some((f) => f.afterCook)) {
+    out.push({ severity: 'info', message: '„Nach dem Kochen“ gilt nur bei Heißverseifung; bei Kaltverseifung kommen alle Fette zusammen in den Topf.' })
+  }
   for (const l of r.fats) {
     if (l.fat.id === 'castor' && l.percent > 15)
       out.push({ severity: 'warning', message: 'Rizinusöl über 15 %: Seife wird klebrig und weich.' })
