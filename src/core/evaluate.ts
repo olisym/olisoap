@@ -83,6 +83,13 @@ function baseRules(r: RecipeResult, ctx: EvaluateContext): Finding[] {
   } else if (input.fats.some((f) => f.afterCook)) {
     out.push({ severity: 'info', message: '„Nach dem Kochen“ gilt nur bei Heißverseifung; bei Kaltverseifung kommen alle Fette zusammen in den Topf.' })
   }
+  // Stearinsäure ist eine freie Fettsäure: verseift sofort und dickt den Leim stark an. Grenze 10 % ist Erfahrungswert.
+  const stearic = input.fats.find((f) => f.fatId === 'stearic-acid')?.percent ?? 0
+  if (stearic > 10 && input.process !== 'hot')
+    out.push({
+      severity: 'warning',
+      message: `Stearinsäure ${stearic.toFixed(0)} % im Kaltverfahren: Der Leim dickt fast sofort an und lässt sich kaum noch in die Form bringen. Heißverseifung nehmen oder unter 10 % bleiben.`,
+    })
   for (const l of r.fats) {
     if (l.fat.id === 'castor' && l.percent > 15)
       out.push({ severity: 'warning', message: 'Rizinusöl über 15 %: Seife wird klebrig und weich.' })

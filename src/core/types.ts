@@ -152,6 +152,8 @@ export interface DesignRules {
   }
   /** Überfettungsöl nach dem Kochen (Heißverseifung), in Reihenfolge der Vorliebe. */
   hotOils: string[]
+  /** Vorgeschlagenes Verfahren, wenn die Seifenart eins braucht (Rasierseife: Stearinsäure → heiß). */
+  process?: 'hot'
 }
 
 export type Severity = 'error' | 'warning' | 'info'

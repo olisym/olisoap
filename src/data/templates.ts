@@ -171,6 +171,7 @@ export const TEMPLATES: TemplateFamily[] = [
         kohPurity: 90,
         superfat: 4,
         water: { mode: 'concentration', value: 30 },
+        process: 'hot',
         fats: [
           { fatId: 'stearic-acid', percent: 40 },
           { fatId: 'babassu', percent: 20 },
@@ -199,6 +200,7 @@ export const TEMPLATES: TemplateFamily[] = [
           kohPurity: 90,
           superfat: 4,
           water: { mode: 'concentration', value: 30 },
+          process: 'hot',
           fats: [
             { fatId: 'stearic-acid', percent: 40 },
             { fatId: 'coconut', percent: 20 },

@@ -12,7 +12,7 @@ const LAURIC = ['coconut', 'babassu', 'palm-kernel']
 
 function run(profileId: string, patch: Partial<DesignRequest> = {}) {
   const profile = PROFILES_BY_ID[profileId]
-  const o = designRecipe({ profile, sliders: MID, process: 'cold', superfat: templateFor(profileId)!.input.superfat, prices: PRICES, ...patch })
+  const o = designRecipe({ profile, sliders: MID, process: profile.design?.process ?? 'cold', superfat: templateFor(profileId)!.input.superfat, prices: PRICES, ...patch })
   if (!o.ok) throw new Error(o.problem)
   return o.result
 }
@@ -24,7 +24,7 @@ describe('Rezept-Assistent', () => {
       expect(r.fats.reduce((s, f) => s + f.percent, 0)).toBe(100)
       expect(r.fats.length).toBeLessThanOrEqual(5)
       expect(r.fats.every((f) => Number.isInteger(f.percent) && f.percent >= 4)).toBe(true)
-      const input = designedInput(profile.id, r, 'cold', templateFor(profile.id)!.input.superfat, 1000)
+      const input = designedInput(profile.id, r, profile.design?.process ?? 'cold', templateFor(profile.id)!.input.superfat, 1000)
       expect(input.lyeType).toBe(templateFor(profile.id)!.input.lyeType)
       const findings = evaluate(calculate(input), profile).filter((f) => f.severity !== 'info')
       expect(findings, `${profile.id}: ${findings.map((f) => f.message).join(' | ')}`).toEqual([])
@@ -64,6 +64,12 @@ describe('Rezept-Assistent', () => {
     expect(fav.reasons.find((r) => r.fatId === 'avocado')!.favorite).toBe(true)
     // Lieblingsöl außerhalb der bevorzugten Fette ist erlaubt
     expect(run('body-sensitive', { favorite: 'lard' }).fats.some((f) => f.fatId === 'lard')).toBe(true)
+  })
+
+  it('Rasierseife kalt: Gegenprobe warnt vor der Stearinsäure', () => {
+    const r = run('shave-brush', { process: 'cold' })
+    const msgs = evaluate(calculate(designedInput('shave-brush', r, 'cold', 4, 400)), PROFILES_BY_ID['shave-brush']).map((f) => f.message)
+    expect(msgs.some((m) => m.includes('Stearinsäure') && m.includes('Kaltverfahren'))).toBe(true)
   })
 
   it('zu wenig Fette: klare Meldung statt Unsinn', () => {
