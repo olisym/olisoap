@@ -13,9 +13,11 @@
   "dependencies": {
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
+    "i18next": "^26.5.12",
     "lucide-react": "^1.63.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-i18next": "^17.1.9",
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {

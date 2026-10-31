@@ -1,9 +1,10 @@
-import { BookOpen, Cloud, CloudOff, Download, Ellipsis, RefreshCw, FlaskConical, Layers, LayoutDashboard, Package, Settings, ShoppingCart, TriangleAlert, Wrench, X, type LucideIcon } from 'lucide-react'
+import { BookOpen, CircleCheck, CircleHelp, Cloud, CloudOff, Download, Ellipsis, RefreshCw, FlaskConical, Layers, LayoutDashboard, Package, Settings, ShoppingCart, TriangleAlert, Wrench, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useSyncStatus } from '../pages/SyncPage'
-import { reloadToLatest, useVersionStatus, versionAdvice } from '../version'
+import { buildLabel, reloadToLatest, useVersionStatus, versionAdvice, type VersionStatus } from '../version'
 
 interface NavItem {
   to: string
@@ -38,32 +39,77 @@ function SyncIndicator() {
   )
 }
 
-/**
- * Versionshinweis unter dem Sync-Zustand: „Update“, wenn der Server eine neuere Version hat (auch ein wartender
- * Service Worker zählt), „Server veraltet“, wenn GitHub schon weiter ist als der Server. Sonst unsichtbar.
- */
-function VersionIndicator({ compact = false, waiting, update }: { compact?: boolean; waiting: boolean; update: () => void }) {
+type Advice = ReturnType<typeof versionAdvice>
+
+const ADVICE_TONE: Record<Advice, string> = { reload: 'text-accent', serverBehind: 'text-warn', current: 'text-ok', unknown: 'text-muted' }
+const ADVICE_DOT: Record<Advice, string> = { reload: 'bg-accent', serverBehind: 'bg-warn', current: 'bg-ok', unknown: 'bg-muted' }
+
+/** Ein wartender Service Worker zählt wie eine neuere Version auf dem Server. */
+function useAdvice(waiting: boolean): { v: VersionStatus; advice: Advice } {
   const v = useVersionStatus()
-  const advice = waiting ? 'reload' : versionAdvice(v)
+  return { v, advice: waiting ? 'reload' : versionAdvice(v) }
+}
+
+/**
+ * Versionsstand, immer sichtbar (Vorbild: Volcano-App): „aktuell“, „Neu laden“, wenn der Server eine neuere Version
+ * hat, „Server veraltet“, wenn GitHub schon weiter ist als der Server. Dazu der Stand des laufenden Builds.
+ */
+function VersionIndicator({ waiting, update }: { waiting: boolean; update: () => void }) {
+  const { t } = useTranslation()
+  const { v, advice } = useAdvice(waiting)
+  const title = [t('Läuft: {{build}} vom {{date}}', { build: v.running, date: buildLabel() }), v.server && t('Server: {{build}}', { build: v.server }), v.latest && t('GitHub: {{build}}', { build: v.latest })]
+    .filter(Boolean)
+    .join('\n')
+  const stamp = <span className="text-[0.6rem] font-normal text-muted tabular-nums">{buildLabel()}</span>
   if (advice === 'reload')
     return (
-      <button
-        className={compact ? 'btn-primary w-full' : 'flex flex-col items-center gap-1 text-[0.65rem] font-semibold text-accent'}
-        onClick={() => (waiting ? update() : void reloadToLatest(update))}
-        title="Neue Version verfügbar"
-      >
+      <button className="flex min-h-11 flex-col items-center gap-0.5 rounded-xl border border-accent/50 bg-accent/10 px-2 py-1 text-[0.65rem] font-semibold text-accent" onClick={() => (waiting ? update() : void reloadToLatest(update))} title={title}>
         <Download size={18} aria-hidden />
-        {compact ? 'Neue Version: jetzt neu laden' : 'Update'}
+        {t('Neu laden')}
       </button>
     )
-  if (advice === 'serverBehind' && !compact)
+  if (advice === 'serverBehind')
     return (
-      <NavLink to="/sync" className="flex flex-col items-center gap-1 text-center text-[0.65rem] text-warn" title={`Server: ${v.server}, GitHub: ${v.latest}`}>
+      <NavLink to="/sync" className="flex flex-col items-center gap-0.5 text-center text-[0.65rem] text-warn" title={title}>
         <TriangleAlert size={18} aria-hidden />
-        Server veraltet
+        {t('Server veraltet')}
+        {stamp}
       </NavLink>
     )
-  return null
+  return (
+    <span className={`flex flex-col items-center gap-0.5 text-[0.65rem] ${ADVICE_TONE[advice]}`} title={advice === 'unknown' ? `${title}\n${t('Noch nicht geprüft (offline?)')}` : title}>
+      {advice === 'current' ? <CircleCheck size={18} aria-hidden /> : <CircleHelp size={18} aria-hidden />}
+      {advice === 'current' ? t('aktuell') : t('Stand')}
+      {stamp}
+    </span>
+  )
+}
+
+/** Handy: Hinweis über der unteren Leiste, nur wenn etwas zu tun ist. */
+function MobileVersionBanner({ waiting, update }: { waiting: boolean; update: () => void }) {
+  const { t } = useTranslation()
+  const { advice } = useAdvice(waiting)
+  if (advice !== 'reload') return null
+  return (
+    <button className="btn-primary w-full" onClick={() => (waiting ? update() : void reloadToLatest(update))}>
+      <Download size={18} aria-hidden />
+      {t('Neue Version: jetzt neu laden')}
+    </button>
+  )
+}
+
+/** Handy: Zeile im Menü „Mehr“ mit dem gleichen Stand wie in der Leiste am Rand. */
+function MobileVersionLine({ waiting }: { waiting: boolean }) {
+  const { t } = useTranslation()
+  const { advice } = useAdvice(waiting)
+  const label = { current: t('Version aktuell'), reload: t('Neue Version bereit'), serverBehind: t('Server veraltet'), unknown: t('Version nicht geprüft') }[advice]
+  return (
+    <p className={`flex min-h-10 items-center gap-3 px-3 text-sm ${ADVICE_TONE[advice]}`}>
+      <span aria-hidden className={`inline-block size-2.5 rounded-full ${ADVICE_DOT[advice]}`} />
+      {label}
+      <span className="ml-auto text-xs text-muted tabular-nums">{t('Stand {{date}}', { date: buildLabel() })}</span>
+    </p>
+  )
 }
 
 function Logo() {
@@ -81,6 +127,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     updateServiceWorker,
   } = useRegisterSW()
   const update = () => void updateServiceWorker(true)
+  const mobileAdvice = useAdvice(waiting).advice
   const [more, setMore] = useState(false)
   const location = useLocation()
   useEffect(() => setMore(false), [location.pathname])
@@ -119,7 +166,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Auf dem Handy ist in der unteren Leiste kein Platz: Update-Hinweis darüber */}
       <div className="no-print fixed inset-x-3 bottom-20 z-30 md:hidden [&:empty]:hidden">
-        <VersionIndicator compact waiting={waiting} update={update} />
+        <MobileVersionBanner waiting={waiting} update={update} />
       </div>
 
       {/* Untere Leiste auf dem Handy */}
@@ -137,7 +184,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </NavLink>
         ))}
         <button className={railLink({ isActive: more })} onClick={() => setMore(!more)} aria-expanded={more}>
-          <span className={railIcon(more)}>{more ? <X size={20} /> : <Ellipsis size={20} />}</span>
+          <span className={`relative ${railIcon(more)}`}>
+            {more ? <X size={20} /> : <Ellipsis size={20} />}
+            {/* Versionsstand auf einen Blick, Einzelheiten im Menü */}
+            <span aria-hidden className={`absolute top-0.5 right-3 size-2 rounded-full ring-2 ring-surface ${ADVICE_DOT[mobileAdvice]}`} />
+          </span>
           Mehr
         </button>
       </nav>
@@ -153,6 +204,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Settings size={20} className="text-accent" aria-hidden />
             Profil & Einstellungen
           </NavLink>
+          <div className="mt-1 border-t border-line pt-1">
+            <MobileVersionLine waiting={waiting} />
+          </div>
         </div>
       )}
     </div>
