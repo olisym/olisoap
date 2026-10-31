@@ -5,7 +5,9 @@ import { useSyncExternalStore } from 'react'
 // Commit-Hash, wie er auch als „Build …“ im Branch deploy steht.
 
 const REPO = 'olisym/olisoap'
-const EVERY_MS = 30 * 60 * 1000
+// Server oft fragen (kleine Datei, eigener Server), GitHub selten: ohne Anmeldung 60 Anfragen je Stunde und IP.
+const SERVER_EVERY_MS = 2 * 60 * 1000
+const GITHUB_EVERY_MS = 10 * 60 * 1000
 
 export interface VersionStatus {
   running: string
@@ -14,6 +16,12 @@ export interface VersionStatus {
   /** Neueste Version im Branch deploy auf GitHub (nur bei eigener Domain geprüft). */
   latest?: string
   checkedAt?: string
+}
+
+/** Lesbarer Stand eines Builds, z. B. „31.10. 01:30“. */
+export function buildLabel(iso = __BUILT_AT__): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '')
 }
 
 /** Was zu tun ist: neu laden (Server hat Neueres) oder Server aktualisieren (GitHub hat Neueres). */
@@ -47,14 +55,20 @@ const versionStore = {
   get: () => status,
 }
 
-/** Prüft beim Start, alle 30 Minuten und beim Zurückkehren in die App. Fehler (offline) werden still ignoriert. */
+/** Prüft beim Start, alle 2 Minuten und beim Zurückkehren in die App. Fehler (offline) werden still ignoriert. */
 export function startVersionCheck(): void {
   if (__BUILD__ === 'lokal') return
   // GitHub Pages baut aus demselben Commit; der Branch deploy betrifft nur die eigene Domain.
   const ownDomain = !location.hostname.endsWith('github.io') && location.hostname !== 'localhost'
+  let githubAt = 0
+  let checkedAt = 0
   const check = async () => {
-    if (document.visibilityState !== 'visible' || !navigator.onLine) return
-    const [server, latest] = await Promise.all([serverBuild().catch(() => undefined), ownDomain ? latestBuild().catch(() => undefined) : undefined])
+    // Fokus und Sichtbarkeit feuern beim Zurückkehren meist beide: nur einmal fragen
+    if (document.visibilityState !== 'visible' || !navigator.onLine || Date.now() - checkedAt < 5000) return
+    checkedAt = Date.now()
+    const askGithub = ownDomain && Date.now() - githubAt >= GITHUB_EVERY_MS
+    if (askGithub) githubAt = Date.now()
+    const [server, latest] = await Promise.all([serverBuild().catch(() => undefined), askGithub ? latestBuild().catch(() => undefined) : undefined])
     status = { ...status, server: server ?? status.server, latest: latest ?? status.latest, checkedAt: new Date().toISOString() }
     listeners.forEach((l) => l())
     // Neuere Version auf dem Server: den Service Worker sofort nachsehen lassen, sonst liefert ein Neuladen
@@ -62,8 +76,10 @@ export function startVersionCheck(): void {
     if (server && server !== __BUILD__) await navigator.serviceWorker?.getRegistration().then((r) => r?.update()).catch(() => undefined)
   }
   void check()
-  setInterval(check, EVERY_MS)
+  setInterval(check, SERVER_EVERY_MS)
   document.addEventListener('visibilitychange', check)
+  window.addEventListener('focus', check)
+  window.addEventListener('online', check)
 }
 
 export function useVersionStatus(): VersionStatus {

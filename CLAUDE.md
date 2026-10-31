@@ -53,13 +53,18 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
   hashen statt Namen einbauen. Vorlagen haben feste Kennungen (`vorlage-…`), doppelte unveränderte Rezepte räumt
   `removeDuplicateRecipes` nach jedem Abgleich auf.
 - Versionen: `version.json` (Build-Hash) neben der App; `src/version.ts` vergleicht laufende Version, Server und
-  Branch `deploy` auf GitHub → Leiste zeigt „Update“ bzw. „Server veraltet“ (Plesk zieht ggf. verzögert, „Jetzt
+  Branch `deploy` auf GitHub → Leiste zeigt immer den Stand: „aktuell“, „Neu laden“ bzw. „Server veraltet“ (Server alle
+  2 min und bei Fokus, GitHub höchstens alle 10 min; Handy: Punkt am „Mehr“-Knopf). Plesk zieht ggf. verzögert („Jetzt
   abrufen“). Service Worker im Modus `prompt`. `.htaccess`: no-cache-Regel muss nach der immutable-Regel stehen.
 
 ## Arbeitsweise
 
 - Nach Änderungen: `npm test`, `npm run build`, `npx oxlint`; UI-Änderungen mit Playwright im Browser prüfen.
-- Commits auf Deutsch, aussagekräftig. Direkt auf `main` (Ein-Personen-Projekt).
+- Commits auf Deutsch, aussagekräftig. Direkt auf `main` (Ein-Personen-Projekt), **nach grünen Prüfungen sofort
+  pushen** (geht gleich online, Nutzer testet dort).
+- **Neue UI-Texte übersetzbar** schreiben: `const { t } = useTranslation()` und `t('Deutscher Text')` (i18next,
+  deutscher Text = Schlüssel, Einrichtung in `src/i18n.ts`). Platzhalter `{{name}}`, Mehrzahl über
+  `defaultValue_one`/`_other`, Zahlen mit `format.ts`. Bestehende Texte (ca. 1000) werden später umgestellt.
 
 ## Lokal entwickeln
 

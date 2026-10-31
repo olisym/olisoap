@@ -4,13 +4,14 @@ import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const BUILD = (process.env.GITHUB_SHA ?? 'lokal').slice(0, 7)
+const BUILT_AT = new Date().toISOString()
 
 /** Legt version.json neben die App: daran erkennt eine laufende App, dass der Server eine neuere Version hat. */
 function versionFile(): Plugin {
   return {
     name: 'olisoap-version',
     generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD, builtAt: new Date().toISOString() }) })
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD, builtAt: BUILT_AT }) })
     },
   }
 }
@@ -19,7 +20,7 @@ function versionFile(): Plugin {
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   // Kurzer Commit-Hash, steht auf der Sync-Seite; entspricht „Build …“ im Branch deploy bzw. in Plesk.
-  define: { __BUILD__: JSON.stringify(BUILD) },
+  define: { __BUILD__: JSON.stringify(BUILD), __BUILT_AT__: JSON.stringify(BUILT_AT) },
   plugins: [
     react(),
     tailwindcss(),

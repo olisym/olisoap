@@ -72,7 +72,11 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   `.htaccess` mit `Require`/`RewriteRule` im `api`-Ordner führte zu HTTP 500. Token im JSON-Body statt Header.
 - Service Worker: `/api/` nie auf `index.html` umleiten; Modus `prompt`; in `.htaccess` muss die no-cache-Regel nach der
   immutable-Regel stehen (sonst wird `sw.js` ein Jahr gecacht).
-- Plesk zieht den Branch `deploy` teils verzögert → Versionsanzeige (`version.ts`): „Update“ bzw. „Server veraltet“.
+- Plesk zieht den Branch `deploy` teils verzögert → Versionsanzeige (`version.ts`), immer sichtbar nach Vorbild der
+  Volcano-App: „aktuell“ + Stand (Build-Zeit), „Neu laden“, „Server veraltet“. GitHub-API ohne Anmeldung: 60 Anfragen
+  je Stunde und IP, deshalb höchstens alle 10 Minuten.
+- Übersetzung: i18next mit deutschem Text als Schlüssel (lesbarer Code, kein Build-Plugin nötig, Standardwerkzeuge
+  zum Herausziehen). Gewählt statt Lingui, weil dessen Makros ein Babel/SWC-Plugin brauchen.
 - Sync-API: Kennungen ≤ 100 Zeichen (Import-Kennungen hashen!), Datensätze ≤ 4 MB; zu große/lange Datensätze werden
   übersprungen und gemeldet statt den Abgleich zu blockieren. Migrationen über Dexie-Versionen (aktuell 8).
 - Große Kataloge (≈ 4600 Artikel): Listen gruppieren und kürzen („Meine Artikel“), teure Berechnungen nur bei
