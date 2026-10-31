@@ -68,6 +68,13 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   ganze Prozent gerundet. ca. 15–35 ms je Durchlauf.
 - **Regler in der Mitte = egal** (kaum Gewicht). Sonst ziehen bei Körperseife Härte, cremiger Schaum und Reinigung
   (dieselben Fettsäuren) gegeneinander und kein Regler wirkt.
+- **Anordnung nach Bildschirmbreite** (wie Material 3 „Window Size Classes“): ab 1024 px Eingabe und Ergebnis
+  nebeneinander, darunter fünf Schritte wie Siebe (Art → Verfahren → Fette → Ziele → Ergebnis), unten bei den
+  Reglern eine Leiste mit Fetten, Gegenprobe-Ampel und €/kg. Nutzer: Handy „für mich alten Mann eine Qual“, Tablet super.
+- **Ein Balken je Eigenschaft**: Schiene mit erreichbarer Fläche und Punkt (Vorschlag), der Knopf ist ein Ring (Wunsch);
+  Punkt im Ring = erfüllt. Name und erreichter Wert über jedem Regler, Legende und ein Satz zum Zusammenhang oben.
+  Die anderen Regler laufen beim Ziehen sichtbar mit (Nutzerwunsch), weiche Übergänge statt Sprünge; der Worker
+  übernimmt jede Antwort, die neuer ist als die angezeigte.
 - **Regler zeigen, was geht** (Wunsch des Nutzers: lernen durch Hin-und-her-Schieben statt Erklärtext): unter jedem
   Regler die erreichbare Fläche (Regler ganz links bzw. rechts, übrige stehen) und ein Punkt für das Erreichte; beim
   Preis die €/kg an beiden Enden. Die acht Zusatz-Durchläufe rechnet ein Web Worker
