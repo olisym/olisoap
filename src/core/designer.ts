@@ -1,4 +1,4 @@
-import { FATS_BY_ID } from '../data/fats'
+import { baseFatId, FATS_BY_ID } from '../data/fats'
 import { soapProperties } from './calc'
 import { TEMPLATES } from '../data/templates'
 import type { DesignRules, RecipeAdditive, RecipeFat, RecipeInput, SoapProperties, TargetProfile } from './types'
@@ -70,7 +70,9 @@ const WEIGHT: Record<TargetKey, number> = { hardness: 1, cleansing: 1.5, bubbly:
 const SCALE = 5
 /** Preisgewicht ganz links („günstig“). */
 const PRICE_WEIGHT = 4
-const LAURIC = new Set(['coconut', 'babassu', 'palm-kernel'])
+const LAURIC_IDS = new Set(['coconut', 'babassu', 'palm-kernel'])
+/** Laurinsäure-Öl, auch als eigenes Fett (z. B. „Kokosöl (Aldi)“). */
+const LAURIC = { has: (id: string) => LAURIC_IDS.has(baseFatId(id)) }
 /** Weniger als das lohnt das Abwiegen nicht. */
 const MIN_PERCENT = 4
 const FAVORITE_MIN = 10

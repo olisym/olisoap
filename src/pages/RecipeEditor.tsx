@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useTranslation } from 'react-i18next'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Findings } from '../components/Findings'
@@ -9,9 +10,10 @@ import { calculate, sapBasis, sapValue, type RecipeResult } from '../core/calc'
 import { barCount, recipeCost } from '../core/cost'
 import { materialPrice, materialStock, type Inventory } from '../core/inventory'
 import { evaluate } from '../core/evaluate'
-import type { RecipeInput, WaterMode } from '../core/types'
+import { swapSuggestions } from '../core/swap'
+import type { RecipeInput, TargetProfile, WaterMode } from '../core/types'
 import { ADDITIVES, ADDITIVES_BY_ID } from '../data/additives'
-import { FATS } from '../data/fats'
+import { FATS, FATS_BY_ID } from '../data/fats'
 import { PROFILES, PROFILES_BY_ID } from '../data/profiles'
 import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
@@ -64,10 +66,19 @@ export function RecipeEditor() {
   }
 
   /** Variante anlegen. Varianten hängen immer direkt an der Grundseife. */
-  async function createVariant() {
+  async function createVariant(patch?: { input: RecipeInput; name: string }) {
     const now = new Date().toISOString()
     const baseId = draft!.baseId ?? draft!.id
-    const copy: Recipe = { ...structuredClone(draft!), id: crypto.randomUUID(), baseId, parentId: undefined, name: `${base?.name ?? draft!.name} Variante`, createdAt: now, updatedAt: now }
+    const copy: Recipe = {
+      ...structuredClone(draft!),
+      ...(patch && { input: patch.input }),
+      id: crypto.randomUUID(),
+      baseId,
+      parentId: undefined,
+      name: patch?.name ?? `${base?.name ?? draft!.name} Variante`,
+      createdAt: now,
+      updatedAt: now,
+    }
     await db.recipes.add(copy)
     setDraft(copy)
     navigate(`/rezepte/${copy.id}`)
@@ -92,7 +103,7 @@ export function RecipeEditor() {
         <button className="btn-primary" disabled={!dirty} onClick={save}>
           {dirty ? 'Speichern' : 'Gespeichert'}
         </button>
-        <button className="btn" onClick={createVariant}>
+        <button className="btn" onClick={() => createVariant()}>
           Variante anlegen
         </button>
         {dirty || !result ? (
@@ -286,6 +297,16 @@ export function RecipeEditor() {
               </div>
               {base && <VariantDiff variant={draft} base={base} />}
               <Findings findings={findings} />
+              {inventory && (
+                <SwapCard
+                  input={input}
+                  profile={profile}
+                  inventory={inventory}
+                  waterHardness={waterHardness}
+                  onSwap={(fats) => setInput({ fats })}
+                  onVariant={(fats, name) => createVariant({ input: { ...input, fats }, name: `${draft.name} ${name}` })}
+                />
+              )}
               {inventory && <CostCard result={result} inventory={inventory} barWeight={draft.barWeight ?? 100} onBarWeight={(barWeight) => set({ barWeight })} />}
             </>
           )}
@@ -497,6 +518,53 @@ interface CostProps {
   inventory: Inventory
   barWeight: number
   onBarWeight: (g: number | undefined) => void
+}
+
+/**
+ * Günstiger tauschen: nur sichtbar, wenn ein Fett 1:1 durch ein gleiches aus anderer Quelle oder ein sehr ähnliches
+ * ersetzt werden kann, das je Sud spürbar billiger ist und die Gegenprobe nicht verschlechtert.
+ */
+function SwapCard({ input, profile, inventory, waterHardness, onSwap, onVariant }: {
+  input: RecipeInput
+  profile?: TargetProfile
+  inventory: Inventory
+  waterHardness?: number
+  onSwap: (fats: RecipeInput['fats']) => void
+  onVariant: (fats: RecipeInput['fats'], suffix: string) => void
+}) {
+  const { t } = useTranslation()
+  const suggestions = useMemo(
+    () => swapSuggestions(input, profile, (id) => materialPrice(inventory, `fat:${id}`)?.pricePerKg, { waterHardness }),
+    [input, profile, inventory, waterHardness],
+  )
+  if (!suggestions.length) return null
+  const swapped = (from: string, to: string) => input.fats.map((f) => (f.fatId === from ? { ...f, fatId: to, sapKohOverride: undefined } : f))
+  return (
+    <div className="card">
+      <h2 className="mb-1 font-semibold">{t('Günstiger tauschen')}</h2>
+      <p className="mb-3 text-xs text-muted">{t('Je Sud mit {{g}} g Fett. Die Gegenprobe bleibt mindestens so gut.', { g: fmt(input.totalFat) })}</p>
+      <ul className="space-y-3">
+        {suggestions.map((s) => (
+          <li key={s.fromId + s.toId} className="text-sm">
+            <p>
+              <b>{FATS_BY_ID[s.fromId].name}</b> → <b>{FATS_BY_ID[s.toId].name}</b>
+            </p>
+            <p className="text-muted">
+              {t('{{euro}} € günstiger', { euro: fmt(s.saving, 2) })} · {s.sameFat ? t('gleiches Fett, andere Quelle') : t('ähnliche Fettsäuren')}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              <button className="btn min-h-11" onClick={() => onSwap(swapped(s.fromId, s.toId))}>
+                {t('Tauschen')}
+              </button>
+              <button className="btn-ghost min-h-11" onClick={() => onVariant(swapped(s.fromId, s.toId), t('mit {{name}}', { name: FATS_BY_ID[s.toId].name }))}>
+                {t('Als Variante anlegen')}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 function CostCard({ result, inventory, barWeight, onBarWeight }: CostProps) {

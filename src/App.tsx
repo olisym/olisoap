@@ -1,4 +1,8 @@
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Fragment, useMemo, type ReactNode } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
+import { setCustomFats } from './data/fats'
+import { db } from './db'
 import { AppShell } from './components/AppShell'
 import { BatchDetail, BatchList } from './pages/Batches'
 import { Correction } from './pages/Correction'
@@ -19,34 +23,50 @@ import { SyncPage } from './pages/SyncPage'
 import { Tools } from './pages/Tools'
 import { BatchWorksheet, Worksheet } from './pages/Worksheet'
 
+/**
+ * Eigene Fette vor dem ersten Zeichnen laden und in die Fettliste hängen. Ändern sie sich (auch per Sync), zeichnen
+ * die Seiten neu, damit keine Berechnung mit dem alten Stand stehen bleibt.
+ */
+function CustomFats({ children }: { children: ReactNode }) {
+  const list = useLiveQuery(() => db.customFats.toArray())
+  const key = useMemo(() => {
+    if (!list) return undefined
+    setCustomFats(list)
+    return JSON.stringify(list)
+  }, [list])
+  return key === undefined ? null : <Fragment key={key}>{children}</Fragment>
+}
+
 export default function App() {
   return (
     <HashRouter>
       <AppShell>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/sieden" element={<SiedenStart />} />
-          <Route path="/sieden/:id" element={<SiedenRun />} />
-          <Route path="/rezepte" element={<RecipeList />} />
-          <Route path="/entwickeln" element={<Designer />} />
-          <Route path="/rezepte/:id" element={<RecipeEditor />} />
-          <Route path="/rezepte/:id/druck" element={<Worksheet />} />
-          <Route path="/rezepte/:id/anleitung" element={<GuidePrint />} />
-          <Route path="/lager/*" element={<InventoryPage />} />
-          <Route path="/einkauf" element={<Shopping />} />
-          <Route path="/chargen" element={<BatchList />} />
-          <Route path="/chargen/:id" element={<BatchDetail />} />
-          <Route path="/chargen/:id/druck" element={<BatchWorksheet />} />
-          <Route path="/chargen/:id/etikett" element={<Labels />} />
-          <Route path="/werkzeuge" element={<Tools />} />
-          <Route path="/korrektur" element={<Correction />} />
-          <Route path="/korrektur/:id" element={<Correction />} />
-          <Route path="/fette" element={<FatList />} />
-          <Route path="/daten" element={<DataPage />} />
-          <Route path="/profil" element={<Settings />} />
-          <Route path="/sync" element={<SyncPage />} />
-          <Route path="/demo" element={<Demo />} />
-        </Routes>
+        <CustomFats>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/sieden" element={<SiedenStart />} />
+            <Route path="/sieden/:id" element={<SiedenRun />} />
+            <Route path="/rezepte" element={<RecipeList />} />
+            <Route path="/entwickeln" element={<Designer />} />
+            <Route path="/rezepte/:id" element={<RecipeEditor />} />
+            <Route path="/rezepte/:id/druck" element={<Worksheet />} />
+            <Route path="/rezepte/:id/anleitung" element={<GuidePrint />} />
+            <Route path="/lager/*" element={<InventoryPage />} />
+            <Route path="/einkauf" element={<Shopping />} />
+            <Route path="/chargen" element={<BatchList />} />
+            <Route path="/chargen/:id" element={<BatchDetail />} />
+            <Route path="/chargen/:id/druck" element={<BatchWorksheet />} />
+            <Route path="/chargen/:id/etikett" element={<Labels />} />
+            <Route path="/werkzeuge" element={<Tools />} />
+            <Route path="/korrektur" element={<Correction />} />
+            <Route path="/korrektur/:id" element={<Correction />} />
+            <Route path="/fette" element={<FatList />} />
+            <Route path="/daten" element={<DataPage />} />
+            <Route path="/profil" element={<Settings />} />
+            <Route path="/sync" element={<SyncPage />} />
+            <Route path="/demo" element={<Demo />} />
+          </Routes>
+        </CustomFats>
       </AppShell>
     </HashRouter>
   )

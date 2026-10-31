@@ -1,3 +1,4 @@
+import { deriveFat, type CustomFat } from '../core/customFat'
 import type { Fat } from '../core/types'
 
 // Richtwerte für Verseifungszahl (mg KOH/g), Fettsäureprofil (%) und Jodzahl.
@@ -281,3 +282,30 @@ export const FATS: Fat[] = [
 ]
 
 export const FATS_BY_ID: Record<string, Fat> = Object.fromEntries(FATS.map((f) => [f.id, f]))
+
+// Eigene Fette (Tabelle customFats) hängen hinten an FATS und in FATS_BY_ID: So kennen Rechnung, Auswahllisten,
+// Gegenprobe und Haltbarkeit sie ohne Sonderfall. Die App setzt sie beim Start und bei jeder Änderung neu.
+const BUILT_IN = FATS.length
+const CUSTOM_BASE: Record<string, string> = {}
+
+export function setCustomFats(list: CustomFat[]): void {
+  for (const f of FATS.splice(BUILT_IN)) {
+    delete FATS_BY_ID[f.id]
+    delete CUSTOM_BASE[f.id]
+  }
+  for (const c of list) {
+    const base = FATS_BY_ID[c.baseId]
+    if (!base || FATS_BY_ID[c.id]) continue
+    const fat = deriveFat(base, c)
+    FATS.push(fat)
+    FATS_BY_ID[fat.id] = fat
+    CUSTOM_BASE[fat.id] = c.baseId
+  }
+}
+
+/** Bekanntes Fett hinter einem eigenen (für Regeln wie „Laurinsäure-Öle“); bei bekannten Fetten die Kennung selbst. */
+export function baseFatId(id: string): string {
+  return CUSTOM_BASE[id] ?? id
+}
+
+export const isCustomFat = (id: string) => id in CUSTOM_BASE

@@ -19,6 +19,8 @@ import { db, type Recipe } from '../db'
 import { fmt } from '../format'
 import { useWaterHardness, useWorkshop } from '../hooks'
 import type { RangeAnswer, RangeJob } from '../workers/designer.worker'
+import type { CustomFat } from '../core/customFat'
+import { useLiveQuery } from 'dexie-react-hooks'
 
 const DESIGNABLE = PROFILES.filter((p) => p.design)
 
@@ -153,7 +155,7 @@ function ChoiceCard({ selected, title, text, badge, onSelect }: { selected: bool
 const SLIDER_KEYS = ['strength', 'lather', 'hardness', 'price'] as const
 
 /** Erreichbare Bereiche je Regler, im Hintergrund gerechnet (Web Worker); bis zur Antwort ohne Fläche. */
-function useRanges(base: DesignRequest | undefined): RangeAnswer['results'] | undefined {
+function useRanges(base: DesignRequest | undefined, customFats: CustomFat[] | undefined): RangeAnswer['results'] | undefined {
   const worker = useRef<Worker>(undefined)
   // Höchstens ein Auftrag läuft; währenddessen zählt nur der neueste Stand (sonst staut es sich beim Schieben)
   const busy = useRef(false)
@@ -162,7 +164,7 @@ function useRanges(base: DesignRequest | undefined): RangeAnswer['results'] | un
   const shown = useRef(0)
   const [results, setResults] = useState<RangeAnswer['results']>()
   useEffect(() => {
-    if (!base) return
+    if (!base || !customFats) return
     if (!worker.current) {
       worker.current = new Worker(new URL('../workers/designer.worker.ts', import.meta.url), { type: 'module' })
       worker.current.onmessage = (e: MessageEvent<RangeAnswer>) => {
@@ -177,13 +179,13 @@ function useRanges(base: DesignRequest | undefined): RangeAnswer['results'] | un
       }
     }
     const requests = SLIDER_KEYS.flatMap((k) => [0, 1].map((v) => ({ ...base, sliders: { ...base.sliders, [k]: v } })))
-    const job: RangeJob = { id: ++latest.current, requests }
+    const job: RangeJob = { id: ++latest.current, requests, customFats }
     if (busy.current) pending.current = job
     else {
       busy.current = true
       worker.current.postMessage(job)
     }
-  }, [base])
+  }, [base, customFats])
   useEffect(() => () => worker.current?.terminate(), [])
   return results
 }
@@ -249,7 +251,8 @@ export function Designer() {
   )
   const outcome = useMemo(() => designRecipe(designRequest), [designRequest])
   // Bereiche nur, wo Regler zu sehen sind (Siebe: vorher steht die Auswahl noch nicht fest)
-  const ranges = useRanges(w && (wide || step === 'props') ? designRequest : undefined)
+  const customFats = useLiveQuery(() => db.customFats.toArray())
+  const ranges = useRanges(w && (wide || step === 'props') ? designRequest : undefined, customFats)
 
   if (!w) return <p className="text-muted">{t('Lade …')}</p>
 

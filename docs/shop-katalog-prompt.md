@@ -95,3 +95,43 @@ Beispiel für Versand nach Gewicht: "versand_eur": null, "versand_staffel": [{ "
 
 Zum Schluss kurz berichten: Anzahl Artikel je "art", welche Bereiche du nicht gefunden hast und was unklar war.
 ```
+
+---
+
+## Teil C: Supermarkt (z. B. Aldi) mit Nährwerten
+
+Für Öle und Fette aus dem Supermarkt. Die Nährwerte von der Artikelseite machen daraus beim Import ein eigenes Fett
+(z. B. „Olivenöl nativ extra (Aldi Süd)“), mit dem Rezept, Gegenprobe und Haltbarkeit rechnen. Der Shop wird als
+„Laden vor Ort“ angelegt, also ohne Versand. Preise im Supermarkt können regional abweichen.
+
+```text
+Erstelle für olisoap, meine Werkstatt-App für Seife, einen Katalog-Auszug der Speiseöle und Speisefette von
+[URL, z. B. https://www.aldi-sued.de oder https://www.aldi-nord.de]. Nur für meinen eigenen Gebrauch.
+Arbeite die Seiten ruhig nacheinander ab, nicht parallel.
+
+1. Nur Öle und Fette aus dem Dauersortiment, die für Seife in Frage kommen: Olivenöl (jede Qualität), Sonnenblumenöl
+   (auch „High Oleic“ oder „zum Braten“), Rapsöl, Kokosöl/Kokosfett, Erdnussöl, Butterschmalz, Schweineschmalz,
+   Rindertalg. Nicht aufnehmen: Mischungen mit Kräutern, Knoblauch oder Aromen, Sprays, Margarine, Fertigprodukte.
+   Aktionsware nur, wenn sie gerade erhältlich ist, dann mit „Aktion“ im Namen.
+
+2. Je Artikel:
+   - "name": Artikelname wie auf der Seite, mit Qualität (z. B. „nativ extra“, „raffiniert“, „Bio“) und Packungsgröße
+   - "url", "art": "fett", "packungsgroesse" (ml bzw. g), "einheit": "ml" oder "g", "preis_eur" (Packungspreis),
+     "lieferbar": null, "bio": true/false, "artikelnummer": null, falls keine angegeben
+   - "naehrwerte": aus der Nährwerttabelle je 100 g, genau wie angegeben:
+     { "fett": …, "gesaettigt": …, "einfach_ungesaettigt": …, "mehrfach_ungesaettigt": … }
+     Fehlt eine Angabe, null. Gibt es keine Nährwerttabelle, "naehrwerte": null.
+
+3. Shop: "name": „Aldi Süd“ bzw. „Aldi Nord“, "url", "vor_ort": true, alle Versandfelder null.
+
+4. Regeln: Nichts schätzen oder ergänzen, insbesondere keine Nährwerte aus allgemeinen Tabellen. Unbekanntes = null.
+
+5. Ausgabe: ein JSON-Objekt im Format von Teil B, als Datei shop-[shopname]-[JJJJ-MM-TT].json
+   (wenn das nicht geht, als einzelner Codeblock). Ein Artikel sieht so aus:
+
+   { "name": "Olivenöl nativ extra 750 ml", "url": "https://…", "art": "fett", "packungsgroesse": 750,
+     "einheit": "ml", "preis_eur": 4.99, "lieferbar": null, "bio": false, "artikelnummer": null,
+     "naehrwerte": { "fett": 100, "gesaettigt": 14, "einfach_ungesaettigt": null, "mehrfach_ungesaettigt": 9 } }
+
+Zum Schluss kurz berichten: Anzahl Artikel, bei welchen die Nährwerte fehlten und was unklar war.
+```

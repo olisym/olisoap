@@ -7,6 +7,7 @@ import type { RecipeInput } from './core/types'
 import { TEMPLATES, type TemplateFamily } from './data/templates'
 import { findDuplicateRecipes, TEMPLATE_DATE } from './core/dedupe'
 import type { ShopTerms } from './core/shops'
+import type { CustomFat } from './core/customFat'
 import { purchaseId } from './import/salandia'
 
 export interface Recipe {
@@ -109,6 +110,7 @@ export const db = new Dexie('olisoap') as Dexie & {
   orderItems: EntityTable<OrderItem, 'id'>
   settings: EntityTable<Setting, 'key'>
   shops: EntityTable<ShopTerms, 'name'>
+  customFats: EntityTable<CustomFat, 'id'>
 }
 
 /** Einstellungen als Schlüssel-Wert-Paare, z. B. das Etikett-Design. Liegen in der Datenbank, damit sie mit gesichert werden. */
@@ -221,6 +223,9 @@ db.version(9)
         if (!l.openedAt && firstUse.has(l.id)) l.openedAt = firstUse.get(l.id)
       })
   })
+
+// Eigene Fette mit Werten vom Etikett (z. B. „Olivenöl (Aldi)“).
+db.version(10).stores({ customFats: 'id' })
 
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
@@ -345,9 +350,10 @@ export interface Backup {
   orderItems: OrderItem[]
   settings: Setting[]
   shops?: ShopTerms[]
+  customFats?: CustomFat[]
 }
 
-const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches', 'orderItems', 'settings', 'shops'] as const
+const TABLES = ['recipes', 'products', 'purchases', 'lots', 'batches', 'orderItems', 'settings', 'shops', 'customFats'] as const
 
 export async function exportBackup(): Promise<Backup> {
   return {
@@ -359,6 +365,7 @@ export async function exportBackup(): Promise<Backup> {
     orderItems: await db.orderItems.toArray(),
     settings: await db.settings.toArray(),
     shops: await db.shops.toArray(),
+    customFats: await db.customFats.toArray(),
     ...(await loadInventory()),
   }
 }
@@ -367,7 +374,7 @@ export async function exportBackup(): Promise<Backup> {
 export async function importBackup(data: unknown): Promise<Record<(typeof TABLES)[number], number>> {
   const backup = data as Partial<Backup>
   if (backup?.app !== 'olisoap' || !Array.isArray(backup.recipes)) throw new Error('Keine gültige olisoap-Sicherung.')
-  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0, orderItems: 0, settings: 0, shops: 0 }
+  const counts = { recipes: 0, products: 0, purchases: 0, lots: 0, batches: 0, orderItems: 0, settings: 0, shops: 0, customFats: 0 }
   await db.transaction('rw', TABLES, async () => {
     for (const t of TABLES) {
       const rows = (backup[t] ?? []) as never[]

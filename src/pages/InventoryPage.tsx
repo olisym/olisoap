@@ -481,14 +481,16 @@ function Import() {
     const inv = await loadInventory()
     const shopCatalog = asShopCatalog(data)
     if (shopCatalog) {
-      const { shop, products, updates } = importShopCatalog(shopCatalog, inv.products, await db.shops.get(shopCatalog.shop.name.trim()))
-      await db.transaction('rw', db.products, db.shops, async () => {
+      const { shop, products, updates, customFats } = importShopCatalog(shopCatalog, inv.products, await db.shops.get(shopCatalog.shop.name.trim()))
+      await db.transaction('rw', db.products, db.shops, db.customFats, async () => {
+        await db.customFats.bulkPut(customFats)
         await db.products.bulkAdd(products)
         await db.products.bulkUpdate(updates.map((u) => ({ key: u.id, changes: u.changes })))
         await db.shops.put(shop)
       })
       const shipping = shop.shipping !== undefined ? `, Versand ${fmt(shop.shipping, 2)} €${shop.freeShippingFrom !== undefined ? `, frei ab ${fmt(shop.freeShippingFrom, 0)} €` : ''}` : ''
-      return `${file.name}: ${shop.name}, ${products.length} neue Artikel, ${updates.length} Preise aktualisiert${shipping}.`
+      const own = customFats.length ? `, ${customFats.length} eigene Fette mit Werten vom Etikett` : ''
+      return `${file.name}: ${shop.name}${shop.local ? ' (Laden vor Ort)' : ''}, ${products.length} neue Artikel, ${updates.length} Preise aktualisiert${shipping}${own}.`
     }
     if (isCatalog(data)) {
       const { products, updates } = importSalandiaCatalog(data, inv.products)
