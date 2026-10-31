@@ -48,7 +48,7 @@ export function batchTasks(b: BatchState, today: string): Task[] {
     const due = last ? addDays(last, 7) : (b.unmoldedAt ?? b.date)
     if (due <= today && !(b.readyDate <= today && cure.stable)) out.push(t('weigh', due, `${b.name} wiegen`, `Charge ${b.number}, Probestück`))
   }
-  if (b.readyDate <= today && !b.tested) out.push(t('test', b.readyDate, `${b.name} prüfen`, `Charge ${b.number}, Zungen- oder pH-Test`))
+  if (b.readyDate <= today && !b.tested) out.push(t('test', b.readyDate, `${b.name} prüfen`, `Charge ${b.number}, pH-Test`))
   if (b.tested && !b.labeledAt) out.push(t('label', b.readyDate, `${b.name} etikettieren`, `Charge ${b.number}`))
   return out
 }

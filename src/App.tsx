@@ -7,6 +7,7 @@ import { DataPage } from './pages/DataPage'
 import { Designer } from './pages/Designer'
 import { Demo } from './pages/Demo'
 import { FatList } from './pages/FatList'
+import { GuidePrint } from './pages/GuidePrint'
 import { InventoryPage } from './pages/InventoryPage'
 import { Labels } from './pages/Labels'
 import { RecipeEditor } from './pages/RecipeEditor'
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/entwickeln" element={<Designer />} />
           <Route path="/rezepte/:id" element={<RecipeEditor />} />
           <Route path="/rezepte/:id/druck" element={<Worksheet />} />
+          <Route path="/rezepte/:id/anleitung" element={<GuidePrint />} />
           <Route path="/lager/*" element={<InventoryPage />} />
           <Route path="/einkauf" element={<Shopping />} />
           <Route path="/chargen" element={<BatchList />} />

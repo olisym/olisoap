@@ -70,6 +70,22 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 - Unbekannter Preis zählt 1,3 × Schnitt (was kein Shop führt, ist schwerer zu bekommen).
 - „Beides“: Rezept kalt, das Überfettungsöl ist schon als „nach dem Kochen“ markiert.
 
+## Einsteiger-Anleitung
+
+- Im Siede-Modus „Schritt für Schritt“ (Einsteiger standardmäßig) oder „Liste“ (Experte); gleiche Häkchen und
+  Ist-Werte, Stoppuhr beim Kochen läuft beim Blättern weiter. Ein Schritt je Bildschirm, große Schrift.
+- Schritte als Daten aus dem Rezept (`core/guide.ts`), Texte getrennt (`guideContent.tsx`) für Bildschirm und Druck.
+- Sicherheit nur Belegtes (SDB NaOH/KOH: Augen ≥ 15 min spülen, Arzt; Haut mit Wasser, **kein Essig**; kein
+  Aluminium wegen Wasserstoff; Lauge ins Wasser). Weiter erst nach „Schutzbrille auf“ und „Handschuhe an“.
+  Erfahrungswerte (Temperaturen, Reifezeit, Spülungsmenge) sind gekennzeichnet.
+- **pH-Teststreifen statt Zungentest**, überall in der App (Wunsch des Nutzers). pH 9–10 ist normal für Seife.
+- Haarseife endet mit „So benutzt du sie“: ohne saure Spülung bleibt Kalkseife im Haar (Nutzer: „funktioniert nur
+  mit der sauren Spülung“). Seifenart hat dafür `usage`.
+- Beim Abwiegen erscheinen Ist-Felder erst auf „Etwas weicht ab?“ (weniger auf einmal). Auf dem Handy stehen
+  Ist-Felder in eigener Zeile, sonst werden Namen abgeschnitten.
+- Rückmeldung je Schritt mit drei Knöpfen (Klar / Zu viel auf einmal / Unklar), beim Abschluss als Text teilbar
+  (Teilen-Menü bzw. Zwischenablage), kein Server. Gedacht für Tester, die wenig Worte machen.
+
 ## Einkauf (größter Ausbau bisher)
 
 - **Shopunabhängig**: Salandia hat kein Feed/Affiliate-Programm (freundliche Antwort: interessant, melden, wenn es
@@ -113,9 +129,8 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 
 1. ~~**Profil & Einstellungen**~~ erledigt (`#/profil`, Zahnrad in der Leiste).
 2. ~~**Rezept-Assistent**~~ erledigt (`#/entwickeln`, siehe unten).
-3. **Einsteiger-Anleitung**: Sieden Schritt für Schritt (ein Schritt je Bildschirm, Sicherheit, Stadien), Ausdruck als
-   Anleitung zum Nachmachen.
+3. ~~**Einsteiger-Anleitung**~~ erledigt (siehe unten). Nutzer liest die Texte gegen, Bruder testet als Neuling.
 4. **Fette tauschen** (gleicher Kern): Hinweis nur, wenn spürbar günstiger und Gegenprobe grün.
 5. **Bis versandfrei auffüllen**: nur mit Dingen, die ohnehin gebraucht werden und nicht verderben.
-6. Später: Cremes/Emulsionen (Aftershave-Balsam), wasserfreie Produkte, Tinkturen, Haltbarkeit fertiger Produkte,
+6. Später: Cremes/Emulsionen (Aftershave-Balsam, passend zur Rasierseife), wasserfreie Produkte, Tinkturen, Haltbarkeit fertiger Produkte,
    Schnelleingabe „Preis gesehen“, Übersetzung (Texte stehen derzeit direkt im Code, ca. 1000 Stück).

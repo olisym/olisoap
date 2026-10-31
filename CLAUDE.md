@@ -79,7 +79,8 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
 Fahrplan in `docs/ENTSCHEIDUNGEN.md`. Erledigt: Seite „Profil & Einstellungen“ (`#/profil`, Modus Einsteiger/Experte
 über `useMode()`/`useExpert()`, Schlüssel `mode`; ohne Wahl abgeleitet: Chargen vorhanden → Experte). Erledigt:
 Rezept-Assistent `#/entwickeln` (`core/designer.ts`, Vorgaben je Seifenart in `profiles.ts` → `design`). Nächster
-Schritt: Einsteiger-Anleitung, dann „Fette tauschen“ (gleicher Kern), „bis versandfrei auffüllen“.
+Schritt: „Fette tauschen“ (gleicher Kern), „bis versandfrei auffüllen“. Einsteiger-Anleitung ist da (Siede-Modus
+„Schritt für Schritt“, `core/guide.ts`, Texte in `pages/guideContent.tsx`, Druck `#/rezepte/:id/anleitung`).
 Hilfen erscheinen dort, wo die Frage entsteht, nicht als Funktionswand.
 
 - Cremes/Emulsionen-Kern (Aftershave-Balsam als erstes Produkt), dann wasserfreie Produkte (Balsam, Bartwachs, Massageöl,

@@ -75,7 +75,7 @@ export const TEMPLATES: TemplateFamily[] = [
         barWeight: 125,
         notes:
           'Heißverseifung: Leim bis zur Spur mixen, dann im Wasserbad oder Slow Cooker bei ca. 80 °C mit Deckel kochen, ' +
-          'bis er durchscheinend und vaselineartig ist und der Zungen- bzw. pH-Test passt (meist 45–90 Minuten). ' +
+          'bis er durchscheinend und vaselineartig ist und der pH-Test passt (Teststreifen, pH 9–10) (meist 45–90 Minuten). ' +
           'Danach etwas abkühlen lassen, Avocadoöl und ggf. ätherisches Öl einrühren und zügig in die Form drücken, ' +
           'aufklopfen, damit keine Luftlöcher bleiben. Mehr Wasser (30 % Laugenkonzentration) hält den Leim formbar. ' +
           'Ob das nach dem Kochen zugegebene Öl wirklich unverseift bleibt, ist nicht sicher belegt: Ein Teil wird im heißen ' +
@@ -160,7 +160,7 @@ export const TEMPLATES: TemplateFamily[] = [
       barWeight: 100,
       notes:
         'Heißverfahren empfohlen, Stearinsäure dickt im Kaltverfahren fast sofort an: Fette und Stearinsäure bei ca. 70 °C schmelzen, Lauge zugeben, ' +
-        'im Wasserbad oder Slow Cooker 1–2 h garen, bis der Zungentest nicht mehr prickelt. Dann Glycerin einrühren und warm in den Tiegel drücken. ' +
+        'im Wasserbad oder Slow Cooker 1–2 h garen, bis der pH-Test passt (Teststreifen, pH 9–10). Dann Glycerin einrühren und warm in den Tiegel drücken. ' +
         'Deckel erst schließen, wenn die Oberfläche trocken ist. ' +
         'Kein Duft: Frisch rasierte Haut ist die empfindlichste Stelle für Duftstoff-Reizungen.',
       input: {
