@@ -191,6 +191,19 @@ db.version(6)
 // Shops mit Versandkosten und Gebühren für den Einkauf über mehrere Anbieter.
 db.version(7).stores({ shops: 'name' })
 
+// Neue Vorlagen-Varianten für Nutzer mit vorhandener Datenbank nachreichen, wenn die Grundseife noch da ist.
+const NEW_TEMPLATE_VARIANTS = ['vorlage-koerperseife-heiss']
+db.version(8)
+  .stores({})
+  .upgrade(async (tx) => {
+    const recipes = tx.table<Recipe, string>('recipes')
+    for (const family of TEMPLATES) {
+      const [base, ...variants] = familyRecipes(family)
+      if (!(await recipes.get(base.id))) continue
+      for (const v of variants) if (NEW_TEMPLATE_VARIANTS.includes(v.id) && !(await recipes.get(v.id))) await recipes.add(v)
+    }
+  })
+
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
 })

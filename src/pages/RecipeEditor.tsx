@@ -168,6 +168,15 @@ export function RecipeEditor() {
               </select>
             </label>
             <label className="label">
+              <LabelText hint="Kalt: Leim bis zur Spur, in die Form, 4–6 Wochen reifen. Heiß: Leim wird gekocht, bis er fertig verseift ist; Duft und Überfettungsöl kommen danach. Benutzbar nach etwa einer Woche, rustikalere Oberfläche.">
+                Verfahren
+              </LabelText>
+              <select className="field" value={input.process ?? 'cold'} onChange={(e) => setInput({ process: e.target.value === 'hot' ? 'hot' : undefined })}>
+                <option value="cold">Kalt (CP)</option>
+                <option value="hot">Heiß (HP)</option>
+              </select>
+            </label>
+            <label className="label">
               <LabelText hint="Steht auf der Verpackung. NaOH meist 99–100 %, KOH oft um 90 %. Die App wiegt entsprechend mehr ein.">
                 Reinheit {input.lyeType === 'dual' ? 'NaOH' : 'der Lauge'}
               </LabelText>
@@ -285,6 +294,7 @@ function FatTable({ draft, setInput }: TableProps) {
   const update = (i: number, patch: Partial<RecipeInput['fats'][number]>) =>
     setInput({ fats: input.fats.map((f, j) => (j === i ? { ...f, ...patch } : f)) })
   const used = new Set(input.fats.map((f) => f.fatId))
+  const hot = input.process === 'hot'
 
   return (
     <div className="card overflow-x-auto">
@@ -298,6 +308,11 @@ function FatTable({ draft, setInput }: TableProps) {
             <th className="w-28 pb-2 font-normal">
               <LabelText hint="Verseifungszahl: mg KOH je g Fett, aus der Fettdatenbank. Nur ändern, wenn das Analysezertifikat abweicht.">VZ</LabelText>
             </th>
+            {hot && (
+              <th className="w-24 pb-2 font-normal">
+                <LabelText hint="Erst nach dem Kochen einrühren, als gezieltes Überfettungsöl. Höchstens so viel, wie überfettet wird.">Danach</LabelText>
+              </th>
+            )}
             <th className="w-8" />
           </tr>
         </thead>
@@ -336,6 +351,17 @@ function FatTable({ draft, setInput }: TableProps) {
                     onChange={(v) => update(i, { sapKohOverride: v })}
                   />
                 </td>
+                {hot && (
+                  <td className="pr-2 text-center">
+                    <input
+                      type="checkbox"
+                      className="size-5 accent-[var(--color-accent)]"
+                      checked={!!f.afterCook}
+                      aria-label={`${fat?.name ?? f.fatId} nach dem Kochen`}
+                      onChange={(e) => update(i, { afterCook: e.target.checked || undefined })}
+                    />
+                  </td>
+                )}
                 <td>
                   <button className="btn-icon" aria-label="Entfernen" onClick={() => setInput({ fats: input.fats.filter((_, j) => j !== i) })}>
                     ×
@@ -362,7 +388,7 @@ function FatTable({ draft, setInput }: TableProps) {
               {fmt(sum, 1)} %
             </td>
             <td className="text-right tabular-nums text-muted">{fmt((input.totalFat * sum) / 100)} g</td>
-            <td colSpan={2} className="text-right text-xs text-muted">
+            <td colSpan={hot ? 3 : 2} className="text-right text-xs text-muted">
               {sapBasis(input.lyeType)}-VZ Ø{' '}
               {fmt(
                 input.fats.reduce((s, f) => {

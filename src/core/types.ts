@@ -48,6 +48,11 @@ export interface RecipeFat {
   percent: number
   /** Optional abweichende Verseifungszahl (mg KOH/g), z. B. aus dem Analysezertifikat des Lieferanten. */
   sapKohOverride?: number
+  /**
+   * Nur Heißverseifung: erst nach dem Kochen einrühren (gezieltes Überfettungsöl). Die Lauge wird wie üblich über alle
+   * Fette berechnet; der Anteil darf die Überfettung nicht übersteigen, sonst ist der gekochte Leim laugenlastig.
+   */
+  afterCook?: boolean
 }
 
 export interface RecipeAdditive {
@@ -71,7 +76,11 @@ export interface RecipeInput {
   superfat: number // %
   water: WaterMode
   additives: RecipeAdditive[]
+  /** Verfahren: Kaltverseifung (Standard) oder Heißverseifung (Leim wird gekocht, Zusätze der Spur kommen danach). */
+  process?: Process
 }
+
+export type Process = 'cold' | 'hot'
 
 export type AdditivePhase = 'lye' | 'fats' | 'trace'
 

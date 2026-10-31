@@ -1,5 +1,5 @@
-import { ArrowLeft, ArrowRight, Check, CircleCheck, FlaskConical, Printer, ShoppingCart, TriangleAlert } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowLeft, ArrowRight, Check, CircleCheck, FlaskConical, Printer, ShoppingCart, Timer, TriangleAlert } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
 import { Chip, EmptyState, PageHeader, Panel } from '../components/ui'
@@ -87,7 +87,7 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
   const [fatTemp, setFatTemp] = useState<number>()
   const [notes, setNotes] = useState('')
   const [date, setDate] = useState(today())
-  const [cureWeeks, setCureWeeks] = useState<number | undefined>(recipe.input.lyeType === 'dual' ? 2 : 5)
+  const [cureWeeks, setCureWeeks] = useState<number | undefined>(recipe.input.lyeType === 'dual' ? 2 : recipe.input.process === 'hot' ? 3 : 5)
   const [deduct, setDeduct] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -259,6 +259,9 @@ function SiedeModus({ result, checked, toggle, actual, setActual, temps, notes, 
   const lyeExtras = r.additives.filter((a) => a.additive.phase === 'lye' && a.lyeConsumed === 0)
   const fatExtras = r.additives.filter((a) => a.additive.phase === 'fats')
   const trace = r.additives.filter((a) => a.additive.phase === 'trace')
+  // Heißverseifung: zurückgehaltene Fette und die Zusätze der Spur kommen erst nach dem Kochen.
+  const hot = r.input.process === 'hot'
+  const afterCook = new Set(r.input.fats.filter((f) => hot && f.afterCook).map((f) => f.fatId))
 
   const fatActual = r.fats.map((l) => actual[`fat:${l.fat.id}`])
   const lyeActual = r.lyeParts.length === 1 ? actual[`lye:${r.lyeParts[0].type}`] : undefined
@@ -297,9 +300,9 @@ function SiedeModus({ result, checked, toggle, actual, setActual, temps, notes, 
         </Panel>
         <Panel title="Phase B · Fette">
           <ul className="space-y-2">
-            {r.fats.map((l) => (
-              item(`fat:${l.fat.id}`, l.fat.name, l.grams, undefined, true)
-            ))}
+            {r.fats
+              .filter((l) => !afterCook.has(l.fat.id))
+              .map((l) => item(`fat:${l.fat.id}`, l.fat.name, l.grams, undefined, true))}
             {fatExtras.map((a) => (
               item(`add:${a.additive.id}`, a.additive.name, a.grams)
             ))}
@@ -328,7 +331,19 @@ function SiedeModus({ result, checked, toggle, actual, setActual, temps, notes, 
       )}
 
       <div className="grid gap-6 xl:grid-cols-2">
-        {trace.length > 0 && (
+        {hot && <CookPanel checked={checked} toggle={toggle} />}
+        {hot && (afterCook.size > 0 || trace.length > 0) && (
+          <Panel title="Phase D · Nach dem Kochen">
+            <p className="mb-3 text-sm text-muted">Etwas abkühlen lassen (ca. 70 °C), einrühren, zügig in die Form drücken und aufklopfen.</p>
+            <ul className="space-y-2">
+              {r.fats
+                .filter((l) => afterCook.has(l.fat.id))
+                .map((l) => item(`fat:${l.fat.id}`, l.fat.name, l.grams, 'Überfettungsöl', true))}
+              {trace.map((a) => item(`add:${a.additive.id}`, a.additive.name, a.grams))}
+            </ul>
+          </Panel>
+        )}
+        {!hot && trace.length > 0 && (
           <Panel title="Phase C · In die Spur">
             <ul className="space-y-2">
               {trace.map((a) => (
@@ -402,5 +417,65 @@ function ChecklistItem({ name, grams, hint, done, onToggle, actual, onActual }: 
       </span>
       {onActual && <NumberField className="w-28" value={actual} digits={1} placeholder="Ist" ariaLabel={`${name} Ist-Wert`} onChange={onActual} />}
     </li>
+  )
+}
+
+/** Stadien beim Kochen des Leims, in der Reihenfolge, in der man sie sieht. */
+const COOK_STAGES: { key: string; name: string; hint: string }[] = [
+  { key: 'cook:trace', name: 'Leichte Spur', hint: 'Mixen wie beim Kaltverfahren, dann Deckel drauf' },
+  { key: 'cook:gel', name: 'Gel-Stadium', hint: 'Ränder werden glasig, Leim steigt auf: umrühren, Hitze runter' },
+  { key: 'cook:vaseline', name: 'Vaseline-Stadium', hint: 'Durchscheinend, zäh, glänzend wie Kartoffelbrei mit Vaseline' },
+  { key: 'cook:test', name: 'Zungen- bzw. pH-Test', hint: 'Kein Bitzeln auf der Zunge, pH ca. 9–10. Sonst weiterkochen' },
+]
+
+/** Heißverseifung: Stadien abhaken und Kochzeit stoppen. Kochen bei ca. 80 °C im Wasserbad oder Slow Cooker. */
+function CookPanel({ checked, toggle }: { checked: Set<string>; toggle: (key: string) => void }) {
+  const [start, setStart] = useState<number>()
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!start) return
+    const t = setInterval(() => setNow(Date.now()), 15_000)
+    return () => clearInterval(t)
+  }, [start])
+  const minutes = start ? Math.floor((now - start) / 60_000) : 0
+  return (
+    <Panel
+      title="Phase C · Kochen"
+      action={
+        start ? (
+          <span className="text-2xl font-semibold tabular-nums">{minutes} min</span>
+        ) : (
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setStart(Date.now())
+              setNow(Date.now())
+            }}
+          >
+            <Timer size={18} /> Kochen startet
+          </button>
+        )
+      }
+    >
+      <p className="mb-3 text-sm text-muted">Ca. 80 °C, Deckel drauf, nicht unbeaufsichtigt: Der Leim kann aufsteigen. Meist 45–90 Minuten.</p>
+      <ul className="space-y-2">
+        {COOK_STAGES.map((s) => (
+          <li key={s.key} className={`flex items-center gap-3 rounded-xl border p-3 transition ${checked.has(s.key) ? 'border-ok/40 bg-ok/5' : 'border-line bg-surface-2'}`}>
+            <button
+              className={`grid size-11 shrink-0 place-items-center rounded-xl border-2 transition ${checked.has(s.key) ? 'border-ok bg-ok text-accent-ink' : 'border-line hover:border-accent'}`}
+              onClick={() => toggle(s.key)}
+              aria-pressed={checked.has(s.key)}
+              aria-label={`${s.name} erreicht`}
+            >
+              {checked.has(s.key) && <Check size={22} />}
+            </button>
+            <div className="min-w-0 flex-1">
+              <p className={`font-medium ${checked.has(s.key) ? 'text-muted line-through' : ''}`}>{s.name}</p>
+              <p className="text-xs text-muted">{s.hint}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   )
 }
