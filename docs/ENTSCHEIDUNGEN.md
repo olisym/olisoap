@@ -130,6 +130,10 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   je Stunde und IP, deshalb höchstens alle 10 Minuten.
 - Übersetzung: i18next mit deutschem Text als Schlüssel (lesbarer Code, kein Build-Plugin nötig, Standardwerkzeuge
   zum Herausziehen). Gewählt statt Lingui, weil dessen Makros ein Babel/SWC-Plugin brauchen.
+- **Unberührte Vorlagen** (Kennung `vorlage-…`, Zeitstempel `TEMPLATE_DATE`) sind nur Vorschläge eines frischen
+  Geräts: Sie gewinnen nie einen Konflikt gegen den Server (`planSync`) und weichen einem gleichnamigen Rezept
+  (`findDuplicateRecipes`). Anlass: Nach Textänderungen an den Vorlagen tauchten auf einem neuen Handy die Rezepte
+  doppelt auf, und „lokal gewinnt“ hätte bearbeitete Grundseifen mit gleicher Kennung überschreiben können.
 - Sync-API: Kennungen ≤ 100 Zeichen (Import-Kennungen hashen!), Datensätze ≤ 4 MB; zu große/lange Datensätze werden
   übersprungen und gemeldet statt den Abgleich zu blockieren. Migrationen über Dexie-Versionen (aktuell 8).
 - Große Kataloge (≈ 4600 Artikel): Listen gruppieren und kürzen („Meine Artikel“), teure Berechnungen nur bei

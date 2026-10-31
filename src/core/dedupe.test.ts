@@ -34,3 +34,38 @@ describe('Doppelte Rezepte', () => {
     expect(findDuplicateRecipes(recipes, ['0abc']).remove).toEqual(['0abc'])
   })
 })
+
+describe('Unberührte Vorlagen', () => {
+  const T = '2026-01-01T00:00:00.000Z'
+  it('weichen einem gleichnamigen Rezept, auch wenn der Inhalt abweicht; Varianten und Chargen werden umgehängt', () => {
+    const recipes = [
+      { id: 'vorlage-koerperseife', name: 'Körperseife', input, createdAt: T, updatedAt: T },
+      { id: 'vorlage-koerperseife-spar', name: 'Körperseife Spar', input, baseId: 'vorlage-koerperseife', createdAt: T, updatedAt: T },
+      { id: 'u1', name: 'Körperseife', input: { ...input, totalFat: 2000 }, updatedAt: '2026-09-01' },
+      { id: 'u2', name: 'Körperseife Spar', input: { ...input, totalFat: 1500 }, baseId: 'u1', updatedAt: '2026-09-01' },
+      { id: 'mine', name: 'Meine Variante', input, baseId: 'vorlage-koerperseife', updatedAt: '2026-10-01' },
+    ]
+    const d = findDuplicateRecipes(recipes, ['vorlage-koerperseife'])
+    expect(d.remove.sort()).toEqual(['vorlage-koerperseife', 'vorlage-koerperseife-spar'])
+    expect(d.replace.get('vorlage-koerperseife')).toBe('u1')
+  })
+
+  it('bearbeitete Vorlagen und Vorlagen ohne Namensgleichen bleiben', () => {
+    const recipes = [
+      { id: 'vorlage-haarseife', name: 'Haarseife', input, updatedAt: '2026-10-30' },
+      { id: 'x', name: 'Haarseife', input: { ...input, totalFat: 2 } },
+      { id: 'vorlage-rasierseife', name: 'Rasierseife', input, createdAt: T, updatedAt: T },
+    ]
+    expect(findDuplicateRecipes(recipes, []).remove).toEqual([])
+  })
+
+  it('löst Ketten auf: niemand zeigt auf ein gelöschtes Rezept', () => {
+    const recipes = [
+      { id: 'vorlage-koerperseife', name: 'Körperseife', input, createdAt: T, updatedAt: T },
+      { id: 'b', name: 'Körperseife', input, updatedAt: '2026-01-02' },
+      { id: 'a', name: 'Körperseife', input, updatedAt: '2026-01-02' },
+    ]
+    const d = findDuplicateRecipes(recipes, [])
+    for (const to of d.replace.values()) expect(d.remove).not.toContain(to)
+  })
+})
