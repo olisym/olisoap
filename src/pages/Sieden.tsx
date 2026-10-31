@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, CircleCheck, FlaskConical, Printer, ShoppingCart, Timer, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, CircleCheck, FlaskConical, Printer, ShoppingCart, Timer, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -14,6 +14,7 @@ import { createBatch, type Recipe } from '../db'
 import { fmt } from '../format'
 import { atBatchSize, groupRecipes, recipeFeasibility, today, useExpert, useFeedbackMode, useWorkshop } from '../hooks'
 import { feedbackText, type Feedback } from '../core/feedback'
+import { clearSession, loadSession, saveSession } from '../session'
 import { GuidedSieden } from './GuidedSieden'
 import { useStepContent } from './guideContent'
 
@@ -83,28 +84,67 @@ export function SiedenRun() {
 
 function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof useWorkshop>> }) {
   const navigate = useNavigate()
-  const [step, setStep] = useState(1)
+  // Unterbrochenes Sieden dieses Rezepts (Neu laden, Update, anderer Bildschirm): genau dort weitermachen
+  const [saved] = useState(() => {
+    const s = loadSession()
+    return s?.recipeId === recipe.id ? s : undefined
+  })
+  const [step, setStep] = useState(saved?.step ?? 1)
   // Startmenge: eigene Sudgröße (z. B. passend zur Form), sonst die Menge aus dem Rezept.
   const size = atBatchSize(recipe, w.batchFat).input.totalFat
-  const [totalFat, setTotalFat] = useState<number | undefined>(size)
-  const [checked, setChecked] = useState<Set<string>>(new Set())
-  const [actual, setActual] = useState<Record<string, number | undefined>>({})
-  const [lyeTemp, setLyeTemp] = useState<number>()
-  const [fatTemp, setFatTemp] = useState<number>()
-  const [notes, setNotes] = useState('')
-  const [date, setDate] = useState(today())
-  const [cureWeeks, setCureWeeks] = useState<number | undefined>(recipe.input.lyeType === 'dual' ? 2 : recipe.input.process === 'hot' ? 3 : 5)
-  const [deduct, setDeduct] = useState(true)
+  const [totalFat, setTotalFat] = useState<number | undefined>(saved ? saved.totalFat : size)
+  const [checked, setChecked] = useState<Set<string>>(() => new Set(saved?.checked ?? []))
+  const [actual, setActual] = useState<Record<string, number | undefined>>(saved?.actual ?? {})
+  const [lyeTemp, setLyeTemp] = useState<number | undefined>(saved?.lyeTemp)
+  const [fatTemp, setFatTemp] = useState<number | undefined>(saved?.fatTemp)
+  const [notes, setNotes] = useState(saved?.notes ?? '')
+  const [date, setDate] = useState(saved?.date ?? today())
+  const [cureWeeks, setCureWeeks] = useState<number | undefined>(saved ? saved.cureWeeks : recipe.input.lyeType === 'dual' ? 2 : recipe.input.process === 'hot' ? 3 : 5)
+  const [deduct, setDeduct] = useState(saved?.deduct ?? true)
   const [busy, setBusy] = useState(false)
   // Schritt für Schritt (Einsteiger) oder Liste (Experte); umschalten behält Häkchen und Ist-Werte
   const { t } = useTranslation()
   const expert = useExpert()
-  const [chosenView, setView] = useState<'steps' | 'list'>()
+  const [chosenView, setView] = useState<'steps' | 'list' | undefined>(saved?.view)
   const view = chosenView ?? (expert ? 'list' : 'steps')
-  const [guideIndex, setGuideIndex] = useState(0)
-  const [cookStart, setCookStart] = useState<number>()
-  const [feedback, setFeedbackState] = useState<Partial<Record<StepKind, Feedback>>>({})
-  const [feedbackNote, setFeedbackNote] = useState('')
+  const [guideIndex, setGuideIndex] = useState(saved?.guideIndex ?? 0)
+  const [cookStart, setCookStart] = useState<number | undefined>(saved?.cookStart)
+  const [feedback, setFeedbackState] = useState<Partial<Record<StepKind, Feedback>>>((saved?.feedback as Partial<Record<StepKind, Feedback>>) ?? {})
+  const [feedbackNote, setFeedbackNote] = useState(saved?.feedbackNote ?? '')
+
+  // Ab „Los geht’s“ jeden Stand sichern
+  useEffect(() => {
+    if (step < 2) return
+    saveSession({ recipeId: recipe.id, recipeName: recipe.name, step, totalFat, checked: [...checked], actual, lyeTemp, fatTemp, notes, date, cureWeeks, deduct, view: chosenView, guideIndex, cookStart, feedback, feedbackNote })
+  }, [recipe.id, recipe.name, step, totalFat, checked, actual, lyeTemp, fatTemp, notes, date, cureWeeks, deduct, chosenView, guideIndex, cookStart, feedback, feedbackNote])
+
+  // Beim Sieden bleibt der Bildschirm an (Screen Wake Lock); nach dem Zurückkehren in die App neu anfordern
+  useEffect(() => {
+    if (step !== 2 || !('wakeLock' in navigator)) return
+    let lock: WakeLockSentinel | undefined
+    const acquire = () => {
+      if (document.visibilityState === 'visible') void navigator.wakeLock.request('screen').then((l) => (lock = l)).catch(() => undefined)
+    }
+    acquire()
+    document.addEventListener('visibilitychange', acquire)
+    return () => {
+      document.removeEventListener('visibilitychange', acquire)
+      void lock?.release().catch(() => undefined)
+    }
+  }, [step])
+
+  /** Mit dem Sieden anfangen; läuft noch ein anderes, erst fragen. */
+  function begin() {
+    const other = loadSession()
+    if (other && other.recipeId !== recipe.id && !confirm(t('Es läuft noch „{{name}}“. Verwerfen und hier neu anfangen?', { name: other.recipeName }))) return
+    setStep(2)
+  }
+
+  function abort() {
+    if (!confirm(t('Sieden abbrechen? Häkchen und Ist-Gewichte gehen verloren.'))) return
+    clearSession()
+    navigate('/sieden')
+  }
   const [shared, setShared] = useState(false)
   const stepContent = useStepContent()
   const feedbackMode = useFeedbackMode()
@@ -152,6 +192,7 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
       deductStock: deduct,
       extra: { lyeTemp, fatTemp, notes: notes || undefined },
     })
+    clearSession()
     navigate(`/chargen/${batch.id}`)
   }
 
@@ -161,11 +202,22 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
         eyebrow="Sieden"
         title={recipe.name}
         actions={
-          <Link className="btn-ghost" to="/sieden">
-            <ArrowLeft size={18} /> Anderes Rezept
-          </Link>
+          step === 1 ? (
+            <Link className="btn-ghost" to="/sieden">
+              <ArrowLeft size={18} /> {t('Anderes Rezept')}
+            </Link>
+          ) : (
+            <button className="btn-ghost text-muted" onClick={abort}>
+              <X size={18} /> {t('Abbrechen')}
+            </button>
+          )
         }
       />
+      {saved && step >= 2 && (
+        <p className="mb-4 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-sm">
+          {t('Weiter, wo du aufgehört hast (Stand {{time}}).', { time: new Date(saved.savedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) })}
+        </p>
+      )}
       <Stepper step={step} />
 
       {step === 1 && (
@@ -217,7 +269,7 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
                   <ShoppingCart size={18} /> Fehlendes auf Einkaufsliste
                 </button>
               )}
-              <button className="btn-primary" disabled={!totalFat} onClick={() => setStep(2)}>
+              <button className="btn-primary" disabled={!totalFat} onClick={begin}>
                 Los geht’s <ArrowRight size={18} />
               </button>
             </div>

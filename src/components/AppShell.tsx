@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { useSyncStatus } from '../pages/SyncPage'
+import { useSession } from '../session'
 import { buildLabel, reloadToLatest, useVersionStatus, versionAdvice, type VersionStatus } from '../version'
 
 interface NavItem {
@@ -112,6 +113,21 @@ function MobileVersionLine({ waiting }: { waiting: boolean }) {
   )
 }
 
+/** Läuft ein Sieden und man ist woanders: ein Tipp führt zurück an dieselbe Stelle. */
+function SessionBanner() {
+  const { t } = useTranslation()
+  const session = useSession()
+  const { pathname } = useLocation()
+  if (!session || pathname.startsWith(`/sieden/${session.recipeId}`)) return null
+  return (
+    <NavLink to={`/sieden/${session.recipeId}`} className="no-print mb-4 flex min-h-12 items-center gap-3 rounded-xl border border-accent/50 bg-accent/10 px-4 py-2 font-medium text-accent">
+      <FlaskConical size={20} aria-hidden />
+      <span className="min-w-0 flex-1">{t('Sieden läuft: {{name}}', { name: session.recipeName })}</span>
+      <span className="text-sm">{t('weiter')} →</span>
+    </NavLink>
+  )
+}
+
 function Logo() {
   return (
     <span className="grid size-10 place-items-center rounded-xl bg-accent font-bold text-accent-ink" aria-hidden>
@@ -162,7 +178,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         </NavLink>
       </nav>
 
-      <main className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-6 md:pb-10 md:pl-30">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-6 md:pb-10 md:pl-30">
+        <SessionBanner />
+        {children}
+      </main>
 
       {/* Auf dem Handy ist in der unteren Leiste kein Platz: Update-Hinweis darüber */}
       <div className="no-print fixed inset-x-3 bottom-20 z-30 md:hidden [&:empty]:hidden">
