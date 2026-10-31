@@ -27,7 +27,7 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
   - `correction.ts` Ist-Einwaage → nachgeben, `evaluate.ts` Prüfregeln/Zielprofile, `inventory.ts` Artikel/Gebinde/Preise,
     `cost.ts`, `batch.ts` Chargen/Verbrauch/Reifung, `tasks.ts` „Heute zu tun“, `label.ts` Zutatenliste/INCI,
     `shopping.ts` Einkaufsplanung, `shops.ts` Shops mit Nebenkosten und Verteilung des Bedarfs auf mehrere Shops,
-    `weights.ts` Gewichte aus Diktat
+    `weights.ts` Gewichte aus Diktat, `designer.ts` Rezept-Assistent (Optimierung der Fettanteile), `profile.ts` Modus
 - `src/data/`: Fette (Verseifungszahl in mg KOH/g, Fettsäuren, Jodzahl, INCI), Zusätze inkl. ätherische Öle, Zielprofile,
   Vorlagen (Grundseifen Körper/Haar/Rasur je mit Spar-Variante).
 - `src/import/`: allgemeiner Shop-Katalog (`olisoap-shop-katalog`, ein Shop je Datei inkl. Versand; Prompt für
@@ -76,8 +76,9 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
 ## Offene Themen (Stand v0.8)
 
 Fahrplan in `docs/ENTSCHEIDUNGEN.md`. Erledigt: Seite „Profil & Einstellungen“ (`#/profil`, Modus Einsteiger/Experte
-über `useMode()`/`useExpert()`, Schlüssel `mode`; ohne Wahl abgeleitet: Chargen vorhanden → Experte). Nächster Schritt:
-Rezept-Assistent (kalt/heiß/beides), dann Einsteiger-Anleitung, „Fette tauschen“, „bis versandfrei auffüllen“.
+über `useMode()`/`useExpert()`, Schlüssel `mode`; ohne Wahl abgeleitet: Chargen vorhanden → Experte). Erledigt:
+Rezept-Assistent `#/entwickeln` (`core/designer.ts`, Vorgaben je Seifenart in `profiles.ts` → `design`). Nächster
+Schritt: Einsteiger-Anleitung, dann „Fette tauschen“ (gleicher Kern), „bis versandfrei auffüllen“.
 Hilfen erscheinen dort, wo die Frage entsteht, nicht als Funktionswand.
 
 - Cremes/Emulsionen-Kern (Aftershave-Balsam als erstes Produkt), dann wasserfreie Produkte (Balsam, Bartwachs, Massageöl,

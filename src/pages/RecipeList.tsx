@@ -1,4 +1,5 @@
-import { BookOpen, FlaskConical, PencilRuler, Plus, Search, Sparkles, X } from 'lucide-react'
+import { BookOpen, FlaskConical, PencilRuler, Plus, Search, Sparkles, Wand2, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Chip, EmptyState, PageHeader, Panel } from '../components/ui'
@@ -53,6 +54,7 @@ function facts(r: Recipe, inv: Inventory) {
 }
 
 export function RecipeList() {
+  const { t } = useTranslation()
   const w = useWorkshop()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -130,7 +132,14 @@ export function RecipeList() {
             </button>
           }
         >
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <p className="mb-2 font-medium">{t('Neue Seife zusammenstellen')}</p>
+              <p className="mb-3 text-sm text-muted">{t('Assistent: Seifenart, vier Regler, fertig. Mit Begründung je Fett.')}</p>
+              <Link className="btn-primary justify-start" to="/entwickeln">
+                <Wand2 size={16} /> {t('Zum Assistenten')}
+              </Link>
+            </div>
             <div>
               <p className="mb-2 font-medium">Variante einer Grundseife</p>
               <p className="mb-3 text-sm text-muted">Eine Sache ändern, Unterschiede sofort sehen.</p>

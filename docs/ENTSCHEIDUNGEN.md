@@ -48,6 +48,21 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 - Demo (`#/demo`): erfundene Beispiel-Shops und eine Beispiel-Werkstatt relativ zum heutigen Datum, nie echte
   Shop-Daten verteilen.
 
+## Rezept-Assistent
+
+- Für alle Seifenarten mit `design`-Vorgaben (bevorzugte Fette mit Höchstanteil, Grenze der Laurinsäure-Öle,
+  Reglerenden, Überfettungsöle für HP). Lauge, Überfettung und Zusätze kommen aus der Grundseife der Seifenart.
+- Kern: Kennzahlen sind linear → kleines Optimierungsproblem. Projizierter, beschleunigter Gradientenabstieg (FISTA);
+  Laurinsäure-Grenze exakt über die Projektion (als Strafterm war das Problem steif und 10× langsamer). Zielbereiche
+  der Seifenart (Gegenprobe), Linol-/Linolensäure und Jodzahl als starke Strafterme, Reglerwünsche schwächer. Danach
+  auf ≤ 5 Fette ausgedünnt (unter den drei kleinsten das am wenigsten wichtige, sonst fliegt Rizinus raus) und auf
+  ganze Prozent gerundet. ca. 15–35 ms je Durchlauf.
+- **Regler in der Mitte = egal** (kaum Gewicht). Sonst ziehen bei Körperseife Härte, cremiger Schaum und Reinigung
+  (dieselben Fettsäuren) gegeneinander und kein Regler wirkt. Unerfüllbare Wünsche werden offen angezeigt.
+- Körperseife: „kräftig“ bleibt an der Laurinsäure-Grenze (18 %) hängen. Gewollt.
+- Unbekannter Preis zählt 1,3 × Schnitt (was kein Shop führt, ist schwerer zu bekommen).
+- „Beides“: Rezept kalt, das Überfettungsöl ist schon als „nach dem Kochen“ markiert.
+
 ## Einkauf (größter Ausbau bisher)
 
 - **Shopunabhängig**: Salandia hat kein Feed/Affiliate-Programm (freundliche Antwort: interessant, melden, wenn es
@@ -90,10 +105,7 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 ## Fahrplan (Reihenfolge abgestimmt)
 
 1. ~~**Profil & Einstellungen**~~ erledigt (`#/profil`, Zahnrad in der Leiste).
-2. **Rezept-Assistent** (Rezepte → „Neue Seife zusammenstellen“, Kachel „Entwickeln“): touch-tauglich, wenige Regler mit
-   Alltagswörtern (mild ↔ kräftig, cremig ↔ großblasig, weich ↔ hart, günstig ↔ egal), Verfahren kalt/heiß/beides,
-   „nur was da ist“ oder „darf einkaufen“, Ausschlüsse und Lieblingsöl, Ergebnis live mit Gegenprobe, Kosten,
-   Haltbarkeit und Begründung; Speichern/Sieden/Einkaufen. Kern: Optimierung (Kennzahlen linear), mit Tests.
+2. ~~**Rezept-Assistent**~~ erledigt (`#/entwickeln`, siehe unten).
 3. **Einsteiger-Anleitung**: Sieden Schritt für Schritt (ein Schritt je Bildschirm, Sicherheit, Stadien), Ausdruck als
    Anleitung zum Nachmachen.
 4. **Fette tauschen** (gleicher Kern): Hinweis nur, wenn spürbar günstiger und Gegenprobe grün.
