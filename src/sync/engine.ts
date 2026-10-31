@@ -16,6 +16,7 @@ const SYNCED: Record<string, string> = {
   orderItems: 'id',
   settings: 'key',
   shops: 'name',
+  customFats: 'id',
 }
 
 /** Obergrenze je verschlüsseltem Datensatz, knapp unter der Grenze der Sync-API (4 MB). */
@@ -30,6 +31,7 @@ const TABLE_NAMES: Record<string, string> = {
   orderItems: 'Bestellposten',
   settings: 'Einstellung',
   shops: 'Shop',
+  customFats: 'Eigenes Fett',
 }
 
 interface Account {

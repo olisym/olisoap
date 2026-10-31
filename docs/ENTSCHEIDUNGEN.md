@@ -125,6 +125,22 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   für vorhandene Gebinde aus der frühesten Charge nach, die daraus abgebucht hat (deterministisch, kein
   Sync-Konflikt). Migrationstest gegen eine echte v8-Datenbank (`fake-indexeddb`), mit Rücknahmeprobe.
 
+## Eigene Fette und Fette tauschen
+
+- **Eigenes Fett** = bekanntes Fett + Werte von der Nährwerttabelle (gesättigt, einfach, mehrfach ungesättigt je
+  100 g; „einfach“ fehlt oft → Fett − gesättigt − mehrfach). Die drei Gruppensummen ersetzen die des Basisfetts,
+  innerhalb der Gruppe bleibt dessen Verteilung; Verseifungszahl und INCI bleiben; Jodzahl um die rechnerische Änderung
+  verschoben (AOCS Cd 1c-85). Tabelle `customFats` (synchronisiert), Kennung `eigen-…`; beim Start und bei Änderung in
+  `FATS`/`FATS_BY_ID` gehängt (App zeichnet dann neu), der Assistenten-Worker bekommt sie je Auftrag mit.
+  Laurinsäure-Regel des Assistenten gilt über `baseFatId` auch für eigene Kokos-/Babassuöle.
+- Anlass (Nutzer, 31.10.2026): Aldi-Olivenöl statt teurem Kreta-Öl. Olivenöl darf laut EU-Norm 2,5–21 % Linolsäure
+  haben; die App rechnet sonst mit 10 %.
+- **Shop-Katalog** kann `naehrwerte` je Artikel und `vor_ort` je Shop liefern (Teil C in `docs/shop-katalog-prompt.md`):
+  Import legt eigene Fette an bzw. frischt sie auf und ordnet die Artikel zu; Shop wird „Laden vor Ort“.
+- **Fette tauschen** im Rezepteditor (unter der Gegenprobe, nur wenn es etwas gibt): 1:1 durch gleiches Fett anderer
+  Quelle oder ähnliches (Abstand der Fettsäuregruppen ≤ 30 Punkte), Preis bekannt, ≥ 0,30 € je Sud günstiger, keine
+  neue Warnung der Gegenprobe. „Tauschen“ ändert den Entwurf, „Als Variante anlegen“ legt eine Variante an.
+
 ## Einkauf (größter Ausbau bisher)
 
 - **Shopunabhängig**: Salandia hat kein Feed/Affiliate-Programm (freundliche Antwort: interessant, melden, wenn es
@@ -173,7 +189,7 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 1. ~~**Profil & Einstellungen**~~ erledigt (`#/profil`, Zahnrad in der Leiste).
 2. ~~**Rezept-Assistent**~~ erledigt (`#/entwickeln`, siehe unten).
 3. ~~**Einsteiger-Anleitung**~~ erledigt (siehe unten). Nutzer liest die Texte gegen, Bruder testet als Neuling.
-4. **Fette tauschen** (gleicher Kern): Hinweis nur, wenn spürbar günstiger und Gegenprobe grün.
+4. ~~**Fette tauschen**~~ erledigt (siehe unten), mit eigenen Fetten aus Etikettwerten.
 5. **Bis versandfrei auffüllen**: nur mit Dingen, die ohnehin gebraucht werden und nicht verderben.
 6. Idee (Stand 31.10.2026, noch nicht geplant): **Tausch fertiger Produkte über Symbolon** (`~/mensch-als-republik`,
    dort als Kandidat in `ROADMAP.md` 8.3 eingetragen). Wer selbst macht, macht zu viel; Selbermacher verschieben

@@ -63,3 +63,40 @@ describe('Shop-Katalog (allgemeines Format)', () => {
     expect(again.shop.paymentFee).toBe(0.35)
   })
 })
+
+describe('Supermarkt mit Nährwerten', () => {
+  const aldi = {
+    format: 'olisoap-shop-katalog',
+    version: 1,
+    erstellt_am: '2026-10-31',
+    shop: { name: 'Aldi', vor_ort: true },
+    produkte: [
+      // Beispielwerte, keine echten Etiketten
+      { name: 'Olivenöl nativ extra 750 ml', art: 'fett', packungsgroesse: 750, einheit: 'ml', preis_eur: 4.99, naehrwerte: { fett: 100, gesaettigt: 14, mehrfach_ungesaettigt: 9 } },
+      { name: 'Sonnenblumenöl 1 l', art: 'fett', packungsgroesse: 1000, einheit: 'ml', preis_eur: 1.79, naehrwerte: { fett: 92, gesaettigt: 10, einfach_ungesaettigt: 25, mehrfach_ungesaettigt: 57 } },
+      { name: 'Rapsöl 1 l', art: 'fett', packungsgroesse: 1000, einheit: 'ml', preis_eur: 1.99 },
+    ],
+  }
+
+  it('Laden vor Ort, eigene Fette aus den Nährwerten, Artikel zeigen darauf', () => {
+    const r = importShopCatalog(asShopCatalog(aldi)!, [])
+    expect(r.shop.local).toBe(true)
+    expect(r.customFats.map((c) => [c.name, c.baseId])).toEqual([
+      ['Olivenöl nativ extra (Aldi)', 'olive'],
+      ['Sonnenblumenöl (Aldi)', 'sunflower'],
+    ])
+    // „einfach ungesättigt“ fehlt beim Olivenöl: Fett minus gesättigt minus mehrfach
+    expect(r.customFats[0].label).toEqual({ saturated: 14, mono: 77, poly: 9 })
+    const olive = r.products.find((p) => p.name.startsWith('Olivenöl'))!
+    expect(olive.fatId).toBe(r.customFats[0].id)
+    // Ohne Nährwerte: wie bisher das bekannte Fett
+    expect(r.products.find((p) => p.name.startsWith('Rapsöl'))!.fatId).toBe('canola')
+  })
+
+  it('bekannter Artikel: Preis aktualisiert, eigenes Fett zugeordnet', () => {
+    const first = importShopCatalog(asShopCatalog(aldi)!, [])
+    const again = importShopCatalog(asShopCatalog({ ...aldi, erstellt_am: '2026-11-15' })!, first.products)
+    expect(again.products).toEqual([])
+    expect(again.updates.find((u) => u.changes.fatId === first.customFats[0].id)).toBeDefined()
+  })
+})

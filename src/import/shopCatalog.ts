@@ -1,3 +1,4 @@
+import { customFatId, labelValid, type CustomFat } from '../core/customFat'
 import type { Product, ProductCategory, ProductUnit } from '../core/inventory'
 import type { ShopTerms } from '../core/shops'
 import { classify, parsePackage } from './salandia'
@@ -20,6 +21,13 @@ interface ShopItem {
   lieferbar?: boolean | null
   bio?: boolean | null
   artikelnummer?: string | null
+  /** Nährwerttabelle je 100 g (vor allem Supermarkt-Öle): daraus wird ein eigenes Fett mit den echten Werten. */
+  naehrwerte?: {
+    fett?: number | null
+    gesaettigt?: number | null
+    einfach_ungesaettigt?: number | null
+    mehrfach_ungesaettigt?: number | null
+  } | null
 }
 
 export interface ShopCatalog {
@@ -35,6 +43,8 @@ export interface ShopCatalog {
     versandfrei_ab_eur?: number | null
     mindestbestellwert_eur?: number | null
     gebuehr_eur?: number | null
+    /** Laden vor Ort (z. B. Supermarkt): keine Versandkosten. */
+    vor_ort?: boolean | null
   }
   produkte: ShopItem[]
 }
@@ -73,6 +83,28 @@ export interface ShopCatalogImport {
   shop: ShopTerms
   products: Product[]
   updates: { id: string; changes: Partial<Product> }[]
+  /** Eigene Fette aus Nährwerten; die zugehörigen Artikel zeigen schon darauf. */
+  customFats: CustomFat[]
+}
+
+/** Name ohne Packungsgröße am Ende („Olivenöl nativ extra 750 ml“ → „Olivenöl nativ extra“), Schreibweise bleibt. */
+const withoutSize = (name: string) => name.replace(/[\s,]*\d+([.,]\d+)?\s*(ml|l|liter|g|kg)\b.*$/i, '').trim() || name
+
+/**
+ * Eigenes Fett aus der Nährwerttabelle eines Artikels, z. B. „Olivenöl nativ extra (Aldi Süd)“. Fehlt „einfach
+ * ungesättigt“, ergibt es sich aus Fett minus gesättigt minus mehrfach ungesättigt.
+ */
+function fatFromLabel(item: ShopItem, baseId: string, shop: string): CustomFat | undefined {
+  const n = item.naehrwerte
+  const saturated = num(n?.gesaettigt)
+  const poly = num(n?.mehrfach_ungesaettigt)
+  const fat = num(n?.fett)
+  const mono = num(n?.einfach_ungesaettigt) ?? (fat !== undefined && saturated !== undefined && poly !== undefined ? fat - saturated - poly : undefined)
+  if (saturated === undefined || poly === undefined || mono === undefined) return undefined
+  const label = { saturated, mono, poly }
+  if (!labelValid(label)) return undefined
+  const name = `${withoutSize(item.name)} (${shop})`
+  return { id: customFatId(name), baseId, name, label }
 }
 
 /**
@@ -93,6 +125,7 @@ export function importShopCatalog(data: ShopCatalog, existing: Product[], stored
     ...(num(s.versandfrei_ab_eur) !== undefined && { freeShippingFrom: num(s.versandfrei_ab_eur) }),
     ...(num(s.mindestbestellwert_eur) !== undefined && { minOrder: num(s.mindestbestellwert_eur) }),
     ...(num(s.gebuehr_eur) !== undefined && { paymentFee: num(s.gebuehr_eur) }),
+    ...(s.vor_ort === true && { local: true }),
   }
 
   const own = existing.filter((p) => p.supplier === supplier)
@@ -101,6 +134,7 @@ export function importShopCatalog(data: ShopCatalog, existing: Product[], stored
   const seen = new Set<string>()
   const products: Product[] = []
   const updates: ShopCatalogImport['updates'] = []
+  const customFats = new Map<string, CustomFat>()
 
   for (const item of data.produkte) {
     const price = num(item.preis_eur)
@@ -111,8 +145,13 @@ export function importShopCatalog(data: ShopCatalog, existing: Product[], stored
 
     const priceInfo = { listPrice: price, listPriceDate: data.erstellt_am, ...(typeof item.lieferbar === 'boolean' && { available: item.lieferbar }) }
     const known = (item.url && byUrl.get(item.url)) || byName.get(normName(item.name))
+    // Nährwerte: eigenes Fett anlegen bzw. aktualisieren, Basis ist das erkannte Fett (bei bekannten Artikeln das zugeordnete)
+    // Zeigt der Artikel schon auf ein eigenes Fett, gilt wieder das am Namen erkannte als Basis (Werte werden aufgefrischt)
+    const baseId = known?.fatId && !known.fatId.startsWith('eigen-') ? known.fatId : classify(item.name).fatId
+    const custom = baseId ? fatFromLabel(item, baseId, supplier) : undefined
+    if (custom) customFats.set(custom.id, custom)
     if (known) {
-      updates.push({ id: known.id, changes: { ...priceInfo, url: known.url ?? item.url ?? undefined } })
+      updates.push({ id: known.id, changes: { ...priceInfo, url: known.url ?? item.url ?? undefined, ...(custom && { fatId: custom.id }) } })
       continue
     }
 
@@ -133,7 +172,8 @@ export function importShopCatalog(data: ShopCatalog, existing: Product[], stored
       ...fromName,
       category: recognized ? fromName.category : kind ? KIND_CATEGORY[kind] : fromName.category,
       ...priceInfo,
+      ...(custom && { fatId: custom.id }),
     })
   }
-  return { shop, products, updates }
+  return { shop, products, updates, customFats: [...customFats.values()] }
 }
