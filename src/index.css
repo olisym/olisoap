@@ -129,3 +129,42 @@ body {
     min-width: 0;
   }
 }
+
+/* Regler im Assistenten: Ring = eigener Wunsch, Schiene unsichtbar (Fläche und Punkt liegen darunter) */
+.wish-range {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.wish-range::-webkit-slider-runnable-track {
+  height: 44px;
+  background: transparent;
+}
+.wish-range::-moz-range-track {
+  background: transparent;
+}
+.wish-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 11px;
+  border-radius: 9999px;
+  background: transparent;
+  border: 3px solid var(--color-accent);
+}
+.wish-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: transparent;
+  border: 3px solid var(--color-accent);
+}
+.wish-range:focus-visible {
+  outline: none;
+}
+.wish-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+.wish-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
