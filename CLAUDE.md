@@ -27,7 +27,8 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
   - `correction.ts` Ist-Einwaage → nachgeben, `evaluate.ts` Prüfregeln/Zielprofile, `inventory.ts` Artikel/Gebinde/Preise,
     `cost.ts`, `batch.ts` Chargen/Verbrauch/Reifung, `tasks.ts` „Heute zu tun“, `label.ts` Zutatenliste/INCI,
     `shopping.ts` Einkaufsplanung, `shops.ts` Shops mit Nebenkosten und Verteilung des Bedarfs auf mehrere Shops,
-    `weights.ts` Gewichte aus Diktat, `designer.ts` Rezept-Assistent (Optimierung der Fettanteile), `profile.ts` Modus
+    `weights.ts` Gewichte aus Diktat, `designer.ts` Rezept-Assistent (Optimierung der Fettanteile), `profile.ts` Modus,
+    `water.ts` Wasserhärte (WRMG-Bereiche, Zitronensäure-Faustregel; Gegenprobe bekommt sie als `EvaluateContext`)
 - `src/data/`: Fette (Verseifungszahl in mg KOH/g, Fettsäuren, Jodzahl, INCI), Zusätze inkl. ätherische Öle, Zielprofile,
   Vorlagen (Grundseifen Körper/Haar/Rasur je mit Spar-Variante).
 - `src/import/`: allgemeiner Shop-Katalog (`olisoap-shop-katalog`, ein Shop je Datei inkl. Versand; Prompt für

@@ -1,5 +1,14 @@
 import type { RecipeResult } from './calc'
 import type { Finding, PropertyKey, Range, TargetProfile } from './types'
+import { citrateDose, hardnessRange } from './water'
+
+/** Umstände in der Werkstatt, die die Gegenprobe kennen sollte. */
+export interface EvaluateContext {
+  /** Wasserhärte in °dH (Profil), fehlt = unbekannt. */
+  waterHardness?: number
+}
+
+const dh = (v: number) => v.toLocaleString('de-DE', { maximumFractionDigits: 1 })
 
 export const PROPERTY_LABELS: Record<PropertyKey, string> = {
   hardness: 'Härte',
@@ -26,7 +35,7 @@ export function formatRange(range: Range): string {
 }
 
 /** Feste Regeln, die unabhängig vom Zielprofil gelten. */
-function baseRules(r: RecipeResult): Finding[] {
+function baseRules(r: RecipeResult, ctx: EvaluateContext): Finding[] {
   const out: Finding[] = []
   const { input } = r
   if (Math.abs(r.percentSum - 100) > 0.05)
@@ -46,8 +55,21 @@ function baseRules(r: RecipeResult): Finding[] {
   const pufa = r.properties.polyunsaturated
   if (pufa > 10 && input.superfat >= 8)
     out.push({ severity: 'warning', message: `Überfettung ${input.superfat} % bei ${pufa.toFixed(1)} % Linol-/Linolensäure: Das freie Fett ist oxidationsanfällig. Überfettung senken oder ungesättigte Öle reduzieren.` })
-  if (pufa > 10 && !r.additives.some((a) => CHELATORS.includes(a.additive.id)))
+  const chelator = r.additives.some((a) => CHELATORS.includes(a.additive.id))
+  const hardness = ctx.waterHardness
+  const range = hardness !== undefined ? hardnessRange(hardness) : undefined
+  if (hardness !== undefined && range !== 'soft' && !chelator)
+    out.push({
+      severity: 'info',
+      message:
+        `Wasser mit ${dh(hardness)} °dH ist ${range === 'hard' ? 'hart' : 'mittelhart'}: Ohne Komplexbildner entsteht beim Waschen mehr Kalkseife (Schmierfilm). ` +
+        `Faustregel: ${dh(citrateDose(hardness))} % Zitronensäure.` +
+        (pufa > 10 ? ' Citrat bindet zugleich Metallspuren und bremst so die Ranzigkeit.' : ''),
+    })
+  else if (pufa > 10 && !chelator)
     out.push({ severity: 'info', message: 'Kein Komplexbildner (Zitronensäure/Natriumcitrat): Metallspuren aus Wasser und Werkzeug können die Ranzigkeit beschleunigen.' })
+  if (hardness !== undefined && range === 'soft' && chelator && pufa <= 10)
+    out.push({ severity: 'info', message: `Bei weichem Wasser (${dh(hardness)} °dH) bringt Citrat gegen Kalkseife wenig. Es bindet aber Metallspuren und bremst Ranzigkeit; Weglassen ist kein Fehler.` })
   if (input.process === 'hot') {
     const after = input.fats.filter((f) => f.afterCook).reduce((sum, f) => sum + f.percent, 0)
     if (after > input.superfat + 0.05)
@@ -68,8 +90,8 @@ function baseRules(r: RecipeResult): Finding[] {
   return out
 }
 
-export function evaluate(r: RecipeResult, profile?: TargetProfile): Finding[] {
-  const out = baseRules(r)
+export function evaluate(r: RecipeResult, profile?: TargetProfile, ctx: EvaluateContext = {}): Finding[] {
+  const out = baseRules(r, ctx)
   if (!profile) return out
   for (const [key, range] of Object.entries(profile.properties) as [PropertyKey, Range][]) {
     const value = r.properties[key]

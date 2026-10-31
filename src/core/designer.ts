@@ -1,7 +1,8 @@
 import { FATS_BY_ID } from '../data/fats'
 import { soapProperties } from './calc'
 import { TEMPLATES } from '../data/templates'
-import type { DesignRules, RecipeFat, RecipeInput, SoapProperties, TargetProfile } from './types'
+import type { DesignRules, RecipeAdditive, RecipeFat, RecipeInput, SoapProperties, TargetProfile } from './types'
+import { citrateDose, hardnessRange } from './water'
 
 // Rezept-Assistent: Fettmischung aus Reglern, Seifenart und Vorrat. Die Kennzahlen (SoapCalc-Konvention) sind linear
 // in den Fettanteilen, deshalb genügt ein kleines Optimierungsproblem: Abstand zu den Zielwerten plus Preis klein
@@ -397,7 +398,7 @@ export function templateFor(profileId: string) {
  * Vollständiges Rezept aus dem Ergebnis. Lauge und Zusätze wie in der Grundseife der Seifenart; Heißverseifung
  * (und „beides“) mit 30 % Laugenkonzentration, damit der gekochte Leim formbar bleibt (Erfahrungswert).
  */
-export function designedInput(profileId: string, result: DesignResult, process: DesignProcess, superfat: number, totalFat: number): RecipeInput {
+export function designedInput(profileId: string, result: DesignResult, process: DesignProcess, superfat: number, totalFat: number, waterHardness?: number): RecipeInput {
   const base = templateFor(profileId)?.input
   return {
     totalFat,
@@ -407,7 +408,28 @@ export function designedInput(profileId: string, result: DesignResult, process: 
     ...(base?.lyeType === 'dual' ? { kohShare: base.kohShare, kohPurity: base.kohPurity } : {}),
     superfat,
     water: process === 'cold' ? (base?.water ?? { mode: 'concentration', value: 33 }) : { mode: 'concentration', value: 30 },
-    additives: structuredClone(base?.additives ?? []),
+    additives: adjustCitrate(structuredClone(base?.additives ?? []), result.properties.polyunsaturated, waterHardness),
     ...(process === 'hot' ? { process: 'hot' as const } : {}),
   }
+}
+
+/**
+ * Zitronensäure der Grundseife an die eigene Wasserhärte anpassen (Menge: Faustregel aus water.ts). Bei weichem
+ * Wasser bleibt sie nur, wenn viel Linol-/Linolensäure drin ist: Citrat bindet auch Metallspuren (Ranzigkeit).
+ */
+export function adjustCitrate(additives: RecipeAdditive[], pufa: number, waterHardness?: number): RecipeAdditive[] {
+  const i = additives.findIndex((a) => a.additiveId === 'citric-anhydrous')
+  if (waterHardness === undefined || i < 0) return additives
+  const dH = waterHardness.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+  const dose = citrateDose(waterHardness)
+  if (dose > 0) {
+    const label = hardnessRange(waterHardness) === 'hard' ? 'hart' : 'mittelhart'
+    additives[i] = { ...additives[i], percentOfFats: dose, reason: `Wasser mit ${dH} °dH (${label}): Natriumcitrat bindet einen Teil von Ca/Mg im Schaum, weniger Kalkseife. Menge nach Faustregel.` }
+    return additives
+  }
+  if (pufa > 10) {
+    additives[i] = { ...additives[i], percentOfFats: 1, reason: `Weiches Wasser (${dH} °dH), aber viel Linol-/Linolensäure: Citrat bindet Metallspuren und bremst Ranzigkeit.` }
+    return additives
+  }
+  return additives.filter((_, j) => j !== i)
 }

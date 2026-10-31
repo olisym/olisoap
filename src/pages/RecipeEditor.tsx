@@ -16,7 +16,7 @@ import { PROFILES, PROFILES_BY_ID } from '../data/profiles'
 import { db, loadInventory, type Recipe } from '../db'
 import { fmt } from '../format'
 import { LabelText } from '../components/ui'
-import { useExpert } from '../hooks'
+import { useExpert, useWaterHardness } from '../hooks'
 
 const WATER_LABELS: Record<WaterMode['mode'], string> = {
   percentOfFats: 'Wasser in % der Fette',
@@ -33,6 +33,7 @@ export function RecipeEditor() {
   const bases = useLiveQuery(() => db.recipes.filter((r) => !r.baseId).toArray())
   const navigate = useNavigate()
   const expert = useExpert()
+  const waterHardness = useWaterHardness()
 
   useEffect(() => {
     if (stored && stored.id !== draft?.id) setDraft(stored)
@@ -52,7 +53,7 @@ export function RecipeEditor() {
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(stored)
   const profile = draft.profileId ? PROFILES_BY_ID[draft.profileId] : undefined
-  const findings = result ? evaluate(result, profile) : []
+  const findings = result ? evaluate(result, profile, { waterHardness }) : []
 
   const set = (patch: Partial<Recipe>) => setDraft({ ...draft, ...patch })
   const setInput = (patch: Partial<RecipeInput>) => set({ input: { ...draft.input, ...patch } })
