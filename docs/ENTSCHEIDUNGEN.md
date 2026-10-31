@@ -20,6 +20,13 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   fehlender Komplexbildner). Eigene Erfahrung des Nutzers: ältere Seifen und Fettvorräte wurden ranzig.
 - **Hartes Wasser**: Zitronensäure in der Lauge bildet Natriumcitrat, bindet Ca/Mg im Schaum. Haare: saure Rinse
   (10 g Zitronensäure auf 2 L Wasser) löst Kalkseife; das Citrat in der Seife hilft nur begrenzt.
+- **Wasserhärte im Profil** (°dH, Eingabe auch in mmol/l, 1 mmol/l = 5,6 °dH). Belegt: Bereiche nach WRMG (weich
+  < 8,4, mittel ≤ 14, hart). Faustregel, so gekennzeichnet: Zitronensäure weich 0, mittel 1 %, hart 1,5 %, ab 21 °dH
+  2 %. Bei weichem Wasser bleibt Citrat nur bei viel Linolsäure (Metallspuren, Ranzigkeit). Die Haar-Rinse hängt
+  nicht von der Härte ab: 2 L mit 15 °dH enthalten ca. 5 mmol Ca/Mg, 10 g Zitronensäure ca. 52 mmol (pH wirkt).
+- Keine automatische Suche nach PLZ: Es gibt keine bundesweite freie Quelle (Daten je Versorger); Sammelseiten
+  abzugreifen wäre rechtlich heikel. Ebenso keine Prospekt-/Angebotsdaten von Supermärkten (keine offene Quelle,
+  Weitergabe untersagt, Scope). Stattdessen: Wert einmal eintragen, „Preis gesehen“ für Ladenpreise.
 - **Rasierseife**: Mischlauge NaOH/KOH, viel Stearinsäure, im Tiegel; Sudgröße bleibt klein (keine Kastenform).
 - **Ätherische Öle** brauchen keine Lauge (keine verseifbaren Triglyceride). Oxidierte Zitrus-/Nadelöle sind stärkere
   Kontaktallergene → alte, offene Flaschen nicht für Seife.

@@ -5,6 +5,7 @@ import { evaluate } from '../core/evaluate'
 import { PROFILES_BY_ID } from '../data/profiles'
 import { db, readyDate, type Batch, type Recipe } from '../db'
 import { fmt } from '../format'
+import { useWaterHardness } from '../hooks'
 
 function Row({ name, grams, share, note }: { name: string; grams: number; share: string; note?: string }) {
   return (
@@ -49,9 +50,10 @@ const de = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('de-DE') : 
 
 function WorksheetView({ recipe, batch, back }: { recipe: Recipe; batch?: Batch; back: string }) {
   const r = calculate(recipe.input)
+  const waterHardness = useWaterHardness()
   const { input } = recipe
   const profile = recipe.profileId ? PROFILES_BY_ID[recipe.profileId] : undefined
-  const findings = evaluate(r, profile)
+  const findings = evaluate(r, profile, { waterHardness })
   const pctOfFats = (a: AdditiveLine) => `${fmt(a.percentOfFats, 1)} % d. GFM`
   const lyePhase = r.additives.filter((a) => a.additive.phase === 'lye')
   const fatPhase = r.additives.filter((a) => a.additive.phase === 'fats')

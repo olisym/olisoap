@@ -1,7 +1,7 @@
 import { FlaskConical, Save, ShoppingCart, Sparkles } from 'lucide-react'
 import { useDeferredValue, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Findings } from '../components/Findings'
 import { PropertyBars } from '../components/PropertyBars'
 import { Chip, PageHeader, Panel } from '../components/ui'
@@ -16,7 +16,7 @@ import { FATS, FATS_BY_ID } from '../data/fats'
 import { PROFILES } from '../data/profiles'
 import { db, type Recipe } from '../db'
 import { fmt } from '../format'
-import { useWorkshop } from '../hooks'
+import { useWaterHardness, useWorkshop } from '../hooks'
 
 const DESIGNABLE = PROFILES.filter((p) => p.design)
 
@@ -61,6 +61,7 @@ function Slider({ left, right, value, onChange }: { left: string; right: string;
 export function Designer() {
   const { t } = useTranslation()
   const w = useWorkshop()
+  const waterHardness = useWaterHardness()
   const navigate = useNavigate()
   const [profileId, setProfileId] = useState(DESIGNABLE[0].id)
   const [process, setProcess] = useState<DesignProcess>('cold')
@@ -105,9 +106,9 @@ export function Designer() {
   if (!w) return <p className="text-muted">{t('Lade …')}</p>
 
   const result = outcome.ok ? outcome.result : undefined
-  const input = result && designedInput(profile.id, result, request.process, superfat, totalFat)
+  const input = result && designedInput(profile.id, result, request.process, superfat, totalFat, waterHardness)
   const calc = input && calculate(input)
-  const findings = calc ? evaluate(calc, profile) : []
+  const findings = calc ? evaluate(calc, profile, { waterHardness }) : []
   const cost = calc && recipeCost(calc, (k: MaterialKey) => materialPrice(w.inventory, k))
   const bars = calc && barCount(calc.batchWeight, template?.barWeight ?? 100)
   const feas = calc && feasibility(w.inventory, needsOf(calc))
@@ -263,7 +264,14 @@ export function Designer() {
                   ))}
                 </ul>
                 <p className="mt-4 text-xs text-muted">
-                  {t('Überfettung {{sf}} %, Lauge und Zusätze wie bei der Grundseife „{{name}}“.', { sf: fmt(superfat, 0), name: template?.name ?? profile.name })}
+                  {t('Überfettung {{sf}} %, Lauge und Zusätze wie bei der Grundseife „{{name}}“.', { sf: fmt(superfat, 0), name: template?.name ?? profile.name })}{' '}
+                  {waterHardness !== undefined ? (
+                    t('Zitronensäure passend zu {{dh}} °dH.', { dh: fmt(waterHardness, 1) })
+                  ) : (
+                    <Link to="/profil" className="underline">
+                      {t('Wasserhärte im Profil eintragen, dann passt die App die Zitronensäure an.')}
+                    </Link>
+                  )}
                   {request.process === 'both' && ' ' + t('Gesiedet wird kalt; wer heiß siedet, stellt im Rezept auf „Heiß“, das markierte Öl kommt dann nach dem Kochen dazu.')}
                 </p>
               </Panel>

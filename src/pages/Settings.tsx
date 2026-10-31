@@ -1,11 +1,14 @@
-import { Cloud, Database, GraduationCap, Moon, Sun, Wrench, type LucideIcon } from 'lucide-react'
+import { Cloud, Database, Droplets, GraduationCap, Moon, Sun, Wrench, type LucideIcon } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { NumberField } from '../components/NumberField'
 import { LabelText, PageHeader, Panel } from '../components/ui'
 import type { Mode } from '../core/profile'
 import { db } from '../db'
-import { BATCH_FAT_KEY, EXTRA_ORDER_KEY, MODE_KEY, useMode, useWorkshop } from '../hooks'
+import { citrateDose, dhToMmol, hardnessRange, mmolToDh } from '../core/water'
+import { fmt } from '../format'
+import { BATCH_FAT_KEY, EXTRA_ORDER_KEY, MODE_KEY, WATER_KEY, useMode, useWaterHardness, useWorkshop } from '../hooks'
 import { useTheme, type Theme } from '../theme'
 
 /** Große Auswahlkachel als Radio-Button (Trefferfläche ≥ 44 px). */
@@ -27,6 +30,8 @@ export function Settings() {
   const m = useMode()
   const w = useWorkshop()
   const [theme, setTheme] = useTheme()
+  const water = useWaterHardness()
+  const [unit, setUnit] = useState<'dH' | 'mmol'>('dH')
   if (!m || !w) return <p className="text-muted">{t('Lade …')}</p>
 
   // Texte hier statt als Konstante oben, damit t() sie sieht (und Werkzeuge sie finden)
@@ -72,6 +77,41 @@ export function Settings() {
             <NumberField value={w.extraOrderCost} digits={2} suffix="€" placeholder="0" ariaLabel={t('Aufwand je weitere Bestellung')} onChange={(v) => db.settings.put({ key: EXTRA_ORDER_KEY, value: v || undefined })} />
           </label>
         </div>
+      </Panel>
+
+      <Panel title={t('Wasser')} icon={Droplets}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="label">
+            <LabelText hint={t('Steht auf der Website deines Wasserversorgers (Suche: Wasserhärte und dein Ort) oder auf der Wasserrechnung. Ändert sich praktisch nie.')}>{t('Wasserhärte')}</LabelText>
+            <span className="flex gap-2">
+              <span className="min-w-0 flex-1">
+                <NumberField
+                  value={water === undefined ? undefined : unit === 'mmol' ? dhToMmol(water) : water}
+                  digits={unit === 'mmol' ? 2 : 1}
+                  placeholder={t('unbekannt')}
+                  ariaLabel={t('Wasserhärte')}
+                  onChange={(v) => db.settings.put({ key: WATER_KEY, value: v === undefined || v <= 0 ? undefined : unit === 'mmol' ? mmolToDh(v) : v })}
+                />
+              </span>
+              <select className="field w-28" value={unit} aria-label={t('Einheit')} onChange={(e) => setUnit(e.target.value as 'dH' | 'mmol')}>
+                <option value="dH">°dH</option>
+                <option value="mmol">mmol/l</option>
+              </select>
+            </span>
+          </label>
+          <p className="self-end text-sm text-muted">
+            {water === undefined
+              ? t('Mit der Wasserhärte passt die App die Zitronensäure in der Seife an und weist in der Gegenprobe auf Kalkseife hin.')
+              : citrateDose(water) === 0
+                ? t('{{dh}} °dH, weich. Gegen Kalkseife braucht die Seife keine Zitronensäure.', { dh: fmt(water, 1) })
+                : t('{{dh}} °dH, {{range}}. Faustregel für die Seife: {{dose}} % Zitronensäure.', {
+                    dh: fmt(water, 1),
+                    range: hardnessRange(water) === 'hard' ? t('hart') : t('mittel'),
+                    dose: fmt(citrateDose(water), 1),
+                  })}
+          </p>
+        </div>
+        <p className="mt-3 text-xs text-muted">{t('Härtebereiche nach Wasch- und Reinigungsmittelgesetz: weich unter 8,4 °dH, mittel bis 14 °dH, darüber hart. Die saure Haar-Rinse braucht unabhängig davon gleich viel Zitronensäure, sie wirkt über den pH-Wert.')}</p>
       </Panel>
 
       <Panel title={t('Darstellung')} icon={theme === 'dark' ? Moon : Sun}>

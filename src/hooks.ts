@@ -20,6 +20,12 @@ export interface Workshop {
 export const BATCH_FAT_KEY = 'batchFat'
 export const EXTRA_ORDER_KEY = 'extraOrderCost'
 export const MODE_KEY = 'mode'
+export const WATER_KEY = 'waterHardness'
+
+/** Wasserhärte in °dH aus dem Profil; undefined = nicht eingetragen (oder noch am Laden). */
+export function useWaterHardness(): number | undefined {
+  return useLiveQuery(async () => (await db.settings.get(WATER_KEY))?.value as number | undefined)
+}
 
 /** Bedienmodus, gewählt oder abgeleitet; `chosen` sagt, ob schon gewählt wurde. */
 export function useMode(): { mode: Mode; chosen: boolean } | undefined {
