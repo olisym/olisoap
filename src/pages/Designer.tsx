@@ -1,5 +1,5 @@
 import { FlaskConical, Save, ShoppingCart, Sparkles } from 'lucide-react'
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { Findings } from '../components/Findings'
@@ -8,15 +8,17 @@ import { Chip, PageHeader, Panel } from '../components/ui'
 import { needsOf, feasibility } from '../core/batch'
 import { calculate } from '../core/calc'
 import { barCount, recipeCost } from '../core/cost'
-import { designedInput, designRecipe, templateFor, type DesignProcess, type FatReason, type Sliders } from '../core/designer'
+import { designedInput, designRecipe, templateFor, type DesignProcess, type DesignRequest, type FatReason, type Sliders } from '../core/designer'
 import { evaluate } from '../core/evaluate'
 import { materialPrice, materialStock, type MaterialKey } from '../core/inventory'
 import { shelfMonths } from '../core/shelfLife'
+import type { SoapProperties } from '../core/types'
 import { FATS, FATS_BY_ID } from '../data/fats'
 import { PROFILES } from '../data/profiles'
 import { db, type Recipe } from '../db'
 import { fmt } from '../format'
 import { useWaterHardness, useWorkshop } from '../hooks'
+import type { RangeAnswer, RangeJob } from '../workers/designer.worker'
 
 const DESIGNABLE = PROFILES.filter((p) => p.design)
 
@@ -42,20 +44,88 @@ function Segmented<T extends string>({ label, value, options, onChange }: { labe
   )
 }
 
-/** Regler zwischen zwei Alltagswörtern. */
-function Slider({ left, right, value, onChange }: { left: string; right: string; value: number; onChange: (v: number) => void }) {
+interface SliderProps {
+  left: string
+  right: string
+  value: number
+  onChange: (v: number) => void
+  /** Erreichbarer Bereich (0–1 auf der Reglerskala) mit den übrigen Reglern, wie sie stehen. */
+  band?: [number, number]
+  /** Wo der Vorschlag tatsächlich landet. */
+  marker?: number
+  /** Zusatz unter den Enden, z. B. Preis der Fettmischung. */
+  leftNote?: string
+  rightNote?: string
+}
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+
+/**
+ * Regler zwischen zwei Alltagswörtern. Darunter die erreichbare Fläche und ein Punkt für das Erreichte: Wer hin und
+ * her schiebt, sieht sofort, was mit dieser Seifenart geht, ohne Erklärtext.
+ */
+function Slider({ left, right, value, onChange, band, marker, leftNote, rightNote }: SliderProps) {
+  const pct = (v: number) => `${clamp01(v) * 100}%`
   return (
     <label className="block">
       <span className="sr-only">
         {left} – {right}
       </span>
       <input type="range" min={0} max={100} step={5} value={Math.round(value * 100)} onChange={(e) => onChange(Number(e.target.value) / 100)} className="h-11 w-full cursor-pointer accent-[var(--color-accent)]" />
-      <span className="-mt-1 flex justify-between text-sm">
-        <span className={value <= 0.5 ? 'text-ink' : 'text-muted'}>{left}</span>
-        <span className={value >= 0.5 ? 'text-ink' : 'text-muted'}>{right}</span>
+      {(band || marker !== undefined) && (
+        // Innenabstand ≈ halbe Daumenbreite, damit Fläche und Punkt unter dem Daumen stehen
+        <span className="block px-2" aria-hidden>
+          <span className="relative -mt-1 block h-2 rounded-full bg-track">
+            {band && <span className="absolute inset-y-0 rounded-full bg-accent/35" style={{ left: pct(Math.min(...band)), width: `calc(${pct(Math.max(...band))} - ${pct(Math.min(...band))})` }} />}
+            {marker !== undefined && <span className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-surface bg-ink" style={{ left: pct(marker) }} />}
+          </span>
+        </span>
+      )}
+      <span className="mt-1 flex justify-between text-sm">
+        <span className={value <= 0.5 ? 'text-ink' : 'text-muted'}>
+          {left}
+          {leftNote && <span className="block text-xs text-muted">{leftNote}</span>}
+        </span>
+        <span className={`text-right ${value >= 0.5 ? 'text-ink' : 'text-muted'}`}>
+          {right}
+          {rightNote && <span className="block text-xs text-muted">{rightNote}</span>}
+        </span>
       </span>
     </label>
   )
+}
+
+const SLIDER_KEYS = ['strength', 'lather', 'hardness', 'price'] as const
+
+/** Erreichbare Bereiche je Regler, im Hintergrund gerechnet (Web Worker); bis zur Antwort ohne Fläche. */
+function useRanges(base: DesignRequest | undefined): RangeAnswer['results'] | undefined {
+  const worker = useRef<Worker>(undefined)
+  // Höchstens ein Auftrag läuft; währenddessen zählt nur der neueste Stand (sonst staut es sich beim Schieben)
+  const busy = useRef(false)
+  const pending = useRef<RangeJob>(undefined)
+  const latest = useRef(0)
+  const [results, setResults] = useState<RangeAnswer['results']>()
+  useEffect(() => {
+    if (!base) return
+    if (!worker.current) {
+      worker.current = new Worker(new URL('../workers/designer.worker.ts', import.meta.url), { type: 'module' })
+      worker.current.onmessage = (e: MessageEvent<RangeAnswer>) => {
+        if (e.data.id === latest.current) setResults(e.data.results)
+        busy.current = !!pending.current
+        if (pending.current) worker.current!.postMessage(pending.current)
+        pending.current = undefined
+      }
+    }
+    const requests = SLIDER_KEYS.flatMap((k) => [0, 1].map((v) => ({ ...base, sliders: { ...base.sliders, [k]: v } })))
+    const job: RangeJob = { id: ++latest.current, requests }
+    if (busy.current) pending.current = job
+    else {
+      busy.current = true
+      worker.current.postMessage(job)
+    }
+  }, [base])
+  useEffect(() => () => worker.current?.terminate(), [])
+  return results
 }
 
 export function Designer() {
@@ -70,7 +140,10 @@ export function Designer() {
   const [favorite, setFavorite] = useState('')
   const [excluded, setExcluded] = useState<string[]>([])
   // Regler bleiben flüssig, gerechnet wird mit dem zuletzt ruhigen Stand
-  const request = useDeferredValue({ profileId, process, sliders, source, favorite, excluded })
+  // Erst bündeln (gleiches Objekt, solange sich nichts ändert), dann verzögern. Ein frisches Objekt je Zeichnen
+  // hätte bei jeder Antwort des Workers neu rechnen lassen: eine Endlosschleife.
+  const current = useMemo(() => ({ profileId, process, sliders, source, favorite, excluded }), [profileId, process, sliders, source, favorite, excluded])
+  const request = useDeferredValue(current)
 
   const profile = DESIGNABLE.find((p) => p.id === request.profileId)!
   const template = templateFor(profile.id)
@@ -88,20 +161,21 @@ export function Designer() {
     return out
   }, [inventory])
 
-  const outcome = useMemo(
-    () =>
-      designRecipe({
-        profile: DESIGNABLE.find((p) => p.id === request.profileId)!,
-        sliders: request.sliders,
-        process: request.process,
-        superfat: templateFor(request.profileId)?.input.superfat ?? 6,
-        available: request.source === 'stock' ? stock : undefined,
-        excluded: request.excluded,
-        favorite: request.favorite || undefined,
-        prices,
-      }),
+  const designRequest = useMemo<DesignRequest>(
+    () => ({
+      profile: DESIGNABLE.find((p) => p.id === request.profileId)!,
+      sliders: request.sliders,
+      process: request.process,
+      superfat: templateFor(request.profileId)?.input.superfat ?? 6,
+      available: request.source === 'stock' ? stock : undefined,
+      excluded: request.excluded,
+      favorite: request.favorite || undefined,
+      prices,
+    }),
     [request, stock, prices],
   )
+  const outcome = useMemo(() => designRecipe(designRequest), [designRequest])
+  const ranges = useRanges(w ? designRequest : undefined)
 
   if (!w) return <p className="text-muted">{t('Lade …')}</p>
 
@@ -118,19 +192,23 @@ export function Designer() {
   const toggleExcluded = (id: string) => setExcluded(excluded.includes(id) ? excluded.filter((x) => x !== id) : [...excluded, id])
   const candidates = Object.keys(DESIGNABLE.find((p) => p.id === profileId)!.design!.fats)
 
-  // Wünsche, die sich mit den Grenzen der Seifenart nicht ganz erfüllen lassen
-  const KEY_LABELS = { hardness: t('Härte'), cleansing: t('Reinigung'), bubbly: t('großblasiger Schaum'), creamy: t('cremiger Schaum') } as const
-  // Nur bewusst verschobene Regler zählen; in der Mitte heißt „egal“
-  const sliderOf = { hardness: request.sliders.hardness, cleansing: request.sliders.strength, bubbly: request.sliders.lather, creamy: request.sliders.lather }
-  const missed = result
-    ? (Object.keys(KEY_LABELS) as (keyof typeof KEY_LABELS)[]).filter((k) => {
-        const s = sliderOf[k] - 0.5
-        const short = s > 0 ? result.targets[k] - result.properties[k] : result.properties[k] - result.targets[k]
-        // Beim cremigen Schaum zeigt der Regler in die Gegenrichtung (links = cremig)
-        const wanted = k === 'creamy' ? -short : short
-        return Math.abs(s) >= 0.2 && wanted > 3
-      })
-    : []
+  // Position einer Kennzahl auf der Reglerskala (linkes Ende = erster Zielwert der Seifenart)
+  const rules = profile.design!.targets
+  const at = (v: number, [a, b]: [number, number]) => (v - a) / (b - a)
+  const position = (k: (typeof SLIDER_KEYS)[number], p: SoapProperties) =>
+    k === 'strength' ? at(p.cleansing, rules.cleansing) : k === 'hardness' ? at(p.hardness, rules.hardness) : (at(p.bubbly, rules.bubbly) + at(p.creamy, rules.creamy)) / 2
+  const sliderView = (k: (typeof SLIDER_KEYS)[number], i: number) => {
+    const lo = ranges?.[i * 2]
+    const hi = ranges?.[i * 2 + 1]
+    if (k === 'price') {
+      const euro = (r?: { costPerKg?: number } | null) => (r?.costPerKg !== undefined ? t('{{price}} €/kg', { price: fmt(r.costPerKg, 2) }) : undefined)
+      return { leftNote: euro(lo), rightNote: euro(hi) }
+    }
+    return {
+      band: lo && hi ? ([position(k, lo.properties), position(k, hi.properties)] as [number, number]) : undefined,
+      marker: result ? position(k, result.properties) : undefined,
+    }
+  }
 
   function reasonText(r: FatReason): string {
     const parts = r.roles.map(
@@ -188,11 +266,21 @@ export function Designer() {
                 ]}
                 onChange={setProcess}
               />
+              <p className="-mt-3 text-sm text-muted">
+                {profile.design?.process === 'hot' && process !== 'hot'
+                  ? t('Für diese Seifenart heiß: Viel Stearinsäure dickt kalt fast sofort an.')
+                  : process === 'cold'
+                    ? t('Kalt: glatte Oberfläche, 4–6 Wochen reifen.')
+                    : process === 'hot'
+                      ? t('Heiß: nach etwa einer Woche benutzbar, rustikalere Oberfläche. Ein Pflegeöl kommt gezielt nach dem Kochen dazu.')
+                      : t('Beides: ein Rezept, das kalt und heiß funktioniert.')}
+              </p>
               <div className="space-y-2">
-                <Slider left={t('mild')} right={t('kräftig')} value={sliders.strength} onChange={(v) => set({ strength: v })} />
-                <Slider left={t('cremig')} right={t('großblasig')} value={sliders.lather} onChange={(v) => set({ lather: v })} />
-                <Slider left={t('weich')} right={t('hart')} value={sliders.hardness} onChange={(v) => set({ hardness: v })} />
-                <Slider left={t('günstig')} right={t('Preis egal')} value={sliders.price} onChange={(v) => set({ price: v })} />
+                <Slider left={t('mild')} right={t('kräftig')} value={sliders.strength} onChange={(v) => set({ strength: v })} {...sliderView('strength', 0)} />
+                <Slider left={t('cremig')} right={t('großblasig')} value={sliders.lather} onChange={(v) => set({ lather: v })} {...sliderView('lather', 1)} />
+                <Slider left={t('weich')} right={t('hart')} value={sliders.hardness} onChange={(v) => set({ hardness: v })} {...sliderView('hardness', 2)} />
+                <Slider left={t('günstig')} right={t('Preis egal')} value={sliders.price} onChange={(v) => set({ price: v })} {...sliderView('price', 3)} />
+                <p className="text-xs text-muted">{t('Helle Fläche: erreichbar mit dieser Seifenart. Punkt: wo der Vorschlag landet.')}</p>
               </div>
             </div>
           </Panel>
@@ -276,13 +364,6 @@ export function Designer() {
                 </p>
               </Panel>
 
-              {missed.length > 0 && (
-                <p className="rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
-                  {t('Nicht ganz erreichbar: {{list}}. Die Grenzen der Seifenart gehen vor, manche Wünsche ziehen in entgegengesetzte Richtungen (z. B. hart und großblasig).', {
-                    list: missed.map((k) => `${KEY_LABELS[k]} (${t('Ziel {{target}}, erreicht {{value}}', { target: fmt(result.targets[k], 0), value: fmt(result.properties[k], 0) })})`).join(', '),
-                  })}
-                </p>
-              )}
 
               <Panel title={t('Gegenprobe')}>
                 <Findings findings={findings} />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PROFILES, PROFILES_BY_ID } from '../data/profiles'
 import { calculate } from './calc'
-import { designedInput, designRecipe, templateFor, type DesignRequest, type Sliders } from './designer'
+import { designedInput, designRecipe, projectSum, templateFor, type DesignRequest, type Sliders } from './designer'
 import { evaluate } from './evaluate'
 
 const MID: Sliders = { strength: 0.5, lather: 0.5, hardness: 0.5, price: 0.5 }
@@ -99,6 +99,35 @@ describe('Rezept-Assistent', () => {
     if (lauric) {
       expect(lauric.roles).toContain('cleansing')
       if (r.fats.filter((f) => LAURIC.includes(f.fatId)).reduce((s, f) => s + f.percent, 0) === 18) expect(lauric.capped).toBe(true)
+    }
+  })
+
+  it('Projektion: exakt wie Halbierung, Grenzen und Summe stimmen (Zufallsfälle)', () => {
+    let seed = 7
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    for (let n = 0; n < 300; n++) {
+      const size = 2 + Math.floor(rnd() * 12)
+      const idx = [...Array(size).keys()]
+      const lb = idx.map(() => (rnd() < 0.2 ? Math.round(rnd() * 8) : 0))
+      const ub = idx.map((i) => lb[i] + Math.round(rnd() * 40))
+      const lo = lb.reduce((a, b) => a + b, 0)
+      const hi = ub.reduce((a, b) => a + b, 0)
+      const total = lo + rnd() * (hi - lo)
+      const y = idx.map(() => rnd() * 120 - 30)
+      const out = idx.map(() => 0)
+      projectSum(y, lb, ub, idx, total, out)
+      expect(out.reduce((a, b) => a + b, 0)).toBeCloseTo(total, 6)
+      out.forEach((v, i) => expect(v >= lb[i] - 1e-9 && v <= ub[i] + 1e-9).toBe(true))
+      // Vergleich mit Halbierung über τ
+      let a = -1e4
+      let b = 1e4
+      for (let k = 0; k < 200; k++) {
+        const m = (a + b) / 2
+        const sum = idx.reduce((s, i) => s + Math.min(ub[i], Math.max(lb[i], y[i] - m)), 0)
+        if (sum > total) a = m
+        else b = m
+      }
+      idx.forEach((i) => expect(out[i]).toBeCloseTo(Math.min(ub[i], Math.max(lb[i], y[i] - (a + b) / 2)), 5))
     }
   })
 })

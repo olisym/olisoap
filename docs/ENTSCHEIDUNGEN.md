@@ -60,12 +60,19 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 - Für alle Seifenarten mit `design`-Vorgaben (bevorzugte Fette mit Höchstanteil, Grenze der Laurinsäure-Öle,
   Reglerenden, Überfettungsöle für HP). Lauge, Überfettung und Zusätze kommen aus der Grundseife der Seifenart.
 - Kern: Kennzahlen sind linear → kleines Optimierungsproblem. Projizierter, beschleunigter Gradientenabstieg (FISTA);
-  Laurinsäure-Grenze exakt über die Projektion (als Strafterm war das Problem steif und 10× langsamer). Zielbereiche
+  Laurinsäure-Grenze exakt über die Projektion (als Strafterm war das Problem steif und 10× langsamer). Projektion
+  exakt über die sortierten Knicke (statt Halbierung), Schrittweite aus der Krümmung per Potenziteration, Abbruch
+  vor dem Neustart prüfen (sonst Endlosschleife durch Rundungsrauschen am Ziel). Ergebnis: ca. 3–12 ms je Durchlauf. Zielbereiche
   der Seifenart (Gegenprobe), Linol-/Linolensäure und Jodzahl als starke Strafterme, Reglerwünsche schwächer. Danach
   auf ≤ 5 Fette ausgedünnt (unter den drei kleinsten das am wenigsten wichtige, sonst fliegt Rizinus raus) und auf
   ganze Prozent gerundet. ca. 15–35 ms je Durchlauf.
 - **Regler in der Mitte = egal** (kaum Gewicht). Sonst ziehen bei Körperseife Härte, cremiger Schaum und Reinigung
-  (dieselben Fettsäuren) gegeneinander und kein Regler wirkt. Unerfüllbare Wünsche werden offen angezeigt.
+  (dieselben Fettsäuren) gegeneinander und kein Regler wirkt.
+- **Regler zeigen, was geht** (Wunsch des Nutzers: lernen durch Hin-und-her-Schieben statt Erklärtext): unter jedem
+  Regler die erreichbare Fläche (Regler ganz links bzw. rechts, übrige stehen) und ein Punkt für das Erreichte; beim
+  Preis die €/kg an beiden Enden. Die acht Zusatz-Durchläufe rechnet ein Web Worker
+  (`src/workers/designer.worker.ts`), höchstens ein Auftrag gleichzeitig, sonst nur der neueste. Unter dem Verfahren
+  eine Zeile, wann sich kalt/heiß anbietet.
 - Körperseife: „kräftig“ bleibt an der Laurinsäure-Grenze (18 %) hängen. Gewollt.
 - Unbekannter Preis zählt 1,3 × Schnitt (was kein Shop führt, ist schwerer zu bekommen).
 - „Beides“: Rezept kalt, das Überfettungsöl ist schon als „nach dem Kochen“ markiert.
@@ -84,7 +91,8 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 - Beim Abwiegen erscheinen Ist-Felder erst auf „Etwas weicht ab?“ (weniger auf einmal). Auf dem Handy stehen
   Ist-Felder in eigener Zeile, sonst werden Namen abgeschnitten.
 - Rückmeldung je Schritt mit drei Knöpfen (Klar / Zu viel auf einmal / Unklar), beim Abschluss als Text teilbar
-  (Teilen-Menü bzw. Zwischenablage), kein Server. Gedacht für Tester, die wenig Worte machen.
+  (Teilen-Menü bzw. Zwischenablage), kein Server. **Nur im Testmodus** (Profil, standardmäßig aus): Überall
+  Zusatzknöpfe nerven (Nutzer: „das nervt den total, und mich erst recht“).
 
 ## Einkauf (größter Ausbau bisher)
 

@@ -12,7 +12,7 @@ import { materialStock } from '../core/inventory'
 import { PROFILES_BY_ID } from '../data/profiles'
 import { createBatch, type Recipe } from '../db'
 import { fmt } from '../format'
-import { atBatchSize, groupRecipes, recipeFeasibility, today, useExpert, useWorkshop } from '../hooks'
+import { atBatchSize, groupRecipes, recipeFeasibility, today, useExpert, useFeedbackMode, useWorkshop } from '../hooks'
 import { feedbackText, type Feedback } from '../core/feedback'
 import { GuidedSieden } from './GuidedSieden'
 import { useStepContent } from './guideContent'
@@ -107,6 +107,7 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
   const [feedbackNote, setFeedbackNote] = useState('')
   const [shared, setShared] = useState(false)
   const stepContent = useStepContent()
+  const feedbackMode = useFeedbackMode()
 
   const scaled: Recipe = useMemo(() => ({ ...recipe, input: { ...recipe.input, totalFat: totalFat || 0 } }), [recipe, totalFat])
   const result = useMemo(() => calculate(scaled.input), [scaled])
@@ -254,6 +255,7 @@ function Run({ recipe, w }: { recipe: Recipe; w: NonNullable<ReturnType<typeof u
           temps={{ lyeTemp, fatTemp, setLyeTemp, setFatTemp }}
           cookStart={cookStart}
           setCookStart={setCookStart}
+          feedbackMode={feedbackMode}
           feedback={feedback}
           setFeedback={(k, f) => setFeedbackState((x) => ({ ...x, [k]: f }))}
           printLink={printLink}
