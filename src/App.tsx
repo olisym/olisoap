@@ -4,6 +4,7 @@ import { BatchDetail, BatchList } from './pages/Batches'
 import { Correction } from './pages/Correction'
 import { Dashboard } from './pages/Dashboard'
 import { DataPage } from './pages/DataPage'
+import { Designer } from './pages/Designer'
 import { Demo } from './pages/Demo'
 import { FatList } from './pages/FatList'
 import { InventoryPage } from './pages/InventoryPage'
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/sieden" element={<SiedenStart />} />
           <Route path="/sieden/:id" element={<SiedenRun />} />
           <Route path="/rezepte" element={<RecipeList />} />
+          <Route path="/entwickeln" element={<Designer />} />
           <Route path="/rezepte/:id" element={<RecipeEditor />} />
           <Route path="/rezepte/:id/druck" element={<Worksheet />} />
           <Route path="/lager/*" element={<InventoryPage />} />

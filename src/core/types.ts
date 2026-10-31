@@ -130,6 +130,28 @@ export interface TargetProfile {
   properties: Partial<Record<PropertyKey, Range>>
   superfat?: Range
   lyeConcentration?: Range
+  /** Vorgaben für den Rezept-Assistenten; ohne sie ist die Seifenart dort nicht wählbar. */
+  design?: DesignRules
+}
+
+/**
+ * Rahmen des Rezept-Assistenten je Seifenart. Die Regler verschieben die Zielwerte zwischen den beiden Enden
+ * (erster Wert = linkes Reglerende: mild, cremig, weich).
+ */
+export interface DesignRules {
+  /** Bevorzugte Fette mit Höchstanteil in %. Andere Fette nur als Lieblingsöl. */
+  fats: Record<string, number>
+  /** Höchstanteil aller Laurinsäure-Öle zusammen (Kokos, Babassu, Palmkern) in %. */
+  lauricMax: number
+  targets: {
+    cleansing: [number, number]
+    bubbly: [number, number]
+    creamy: [number, number]
+    hardness: [number, number]
+    conditioning?: number
+  }
+  /** Überfettungsöl nach dem Kochen (Heißverseifung), in Reihenfolge der Vorliebe. */
+  hotOils: string[]
 }
 
 export type Severity = 'error' | 'warning' | 'info'

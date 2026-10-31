@@ -101,7 +101,7 @@ export function Dashboard() {
           subtitle="Bedarf berechnen, bestellen"
           status={openOrders + onTheWay > 0 ? <Chip tone="accent">{openOrders} offen · {onTheWay} unterwegs</Chip> : undefined}
         />
-        <TaskTile to="/rezepte?entwickeln=1" icon={PencilRuler} title="Entwickeln" subtitle="Neue Variante oder Grundseife" />
+        <TaskTile to="/rezepte?entwickeln=1" icon={PencilRuler} title="Entwickeln" subtitle="Assistent, Variante oder Grundseife" />
       </section>
 
       <section aria-label="Kennzahlen" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
