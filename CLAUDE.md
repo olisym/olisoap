@@ -33,7 +33,7 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
     `swap.ts` Fette tauschen (1:1, gleiches oder ähnliches Fett, günstiger, Gegenprobe nicht schlechter),
     `water.ts` Wasserhärte (WRMG-Bereiche, Zitronensäure-Faustregel; Gegenprobe bekommt sie als `EvaluateContext`)
 - `src/data/`: Fette (Verseifungszahl in mg KOH/g, Fettsäuren, Jodzahl, INCI), Zusätze inkl. ätherische Öle, Zielprofile,
-  Vorlagen (Grundseifen Körper/Haar/Rasur je mit Spar-Variante).
+  Vorlagen (Grundseifen Körper/Haar/Rasur je mit Spar-Variante; Körperseife zusätzlich „heiß“ und „Waschbecken“).
 - `src/import/`: allgemeiner Shop-Katalog (`olisoap-shop-katalog`, ein Shop je Datei inkl. Versand; Prompt für
   Claude in Chrome in `docs/shop-katalog-prompt.md`), dazu Salandia-Bestellübersicht und -Katalog (automatische Erkennung).
 - `src/sync/` + `public/api/index.php`: Ende-zu-Ende-verschlüsselter Sync (PBKDF2 → AES-256-GCM im Browser, Server speichert
@@ -42,7 +42,8 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
 - Verfahren `input.process` 'cold' (Standard) | 'hot' (HP). HP: Lauge unverändert über alle Fette; `RecipeFat.afterCook`
   = Überfettungsöl nach dem Kochen (Gegenprobe: Summe ≤ Überfettung); Zusätze der Spur kommen nach dem Kochen.
   Siede-Modus mit Phase „Kochen“ (Stoppuhr, Stadien) und „Nach dem Kochen“, Arbeitsblatt ebenso. Vorlage
-  „Körperseife heiß“ (Migration v8 ergänzt sie bei vorhandener Grundseife). Nutzer hat bisher nur kalt gesiedet.
+  „Körperseife heiß“ (Migration v8 ergänzt sie bei vorhandener Grundseife; neue Vorlagen-Varianten immer so nachreichen,
+  `addTemplateVariants` in `db.ts`). Nutzer hat bisher nur kalt gesiedet.
 
 ## Betrieb
 

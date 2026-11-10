@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie'
+import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import { addDays, needsOf, nextBatchNumber, planConsumption, type Deduction, type Need, type Weighing } from './core/batch'
 import { calculate } from './core/calc'
 import { barCount } from './core/cost'
@@ -196,17 +196,19 @@ db.version(6)
 db.version(7).stores({ shops: 'name' })
 
 // Neue Vorlagen-Varianten für Nutzer mit vorhandener Datenbank nachreichen, wenn die Grundseife noch da ist.
-const NEW_TEMPLATE_VARIANTS = ['vorlage-koerperseife-heiss']
+// Vorhandene (evtl. bearbeitete) Rezepte bleiben unberührt.
+async function addTemplateVariants(tx: Transaction, ids: string[]) {
+  const recipes = tx.table<Recipe, string>('recipes')
+  for (const family of TEMPLATES) {
+    const [base, ...variants] = familyRecipes(family)
+    if (!(await recipes.get(base.id))) continue
+    for (const v of variants) if (ids.includes(v.id) && !(await recipes.get(v.id))) await recipes.add(v)
+  }
+}
+
 db.version(8)
   .stores({})
-  .upgrade(async (tx) => {
-    const recipes = tx.table<Recipe, string>('recipes')
-    for (const family of TEMPLATES) {
-      const [base, ...variants] = familyRecipes(family)
-      if (!(await recipes.get(base.id))) continue
-      for (const v of variants) if (NEW_TEMPLATE_VARIANTS.includes(v.id) && !(await recipes.get(v.id))) await recipes.add(v)
-    }
-  })
+  .upgrade((tx) => addTemplateVariants(tx, ['vorlage-koerperseife-heiss']))
 
 // Anbruchdatum für vorhandene Gebinde nachtragen: frühestes Siededatum einer Charge, die daraus abgebucht hat.
 // Auf jedem Gerät gleich (gleiche Daten, gleiches Ergebnis), der Abgleich sieht also keinen Konflikt.
@@ -226,6 +228,11 @@ db.version(9)
 
 // Eigene Fette mit Werten vom Etikett (z. B. „Olivenöl (Aldi)“).
 db.version(10).stores({ customFats: 'id' })
+
+// Variante „Körperseife Waschbecken“ (Hände, Gesicht) nachreichen.
+db.version(11)
+  .stores({})
+  .upgrade((tx) => addTemplateVariants(tx, ['vorlage-koerperseife-waschbecken']))
 
 db.on('populate', (tx) => {
   tx.table('recipes').bulkAdd(TEMPLATES.flatMap(familyRecipes))
