@@ -69,6 +69,34 @@ export const TEMPLATES: TemplateFamily[] = [
         },
       },
       {
+        name: 'Körperseife Waschbecken',
+        description: 'Für Hände und Gesicht: mehr Shea und Kakaobutter, weniger Olivenöl. Bleibt bei häufigem Nasswerden fester.',
+        profileId: 'body-sensitive',
+        barWeight: 75,
+        notes:
+          'Gleich mild wie die Grundseife (Laurinsäure unverändert, 18 % Babassu), aber mehr Palmitin- und Stearinsäure: ' +
+          'Deren Seifen lösen sich schlechter in Wasser als Ölsäure-Seife, das Stück weicht in der Schale weniger auf. ' +
+          'Kleine Stücke im Wechsel benutzen und auf einer abtropfenden Schale lagern: Das bringt erfahrungsgemäß mehr als jede Rezeptänderung. ' +
+          'Etwa 8 Wochen reifen lassen (Erfahrungswert). Arbeitstemperatur ca. 35–40 °C, der Leim dickt durch die Butter schneller an. ' +
+          'Optional 1–2 % Natriumlaktat für ein härteres Stück; ob es im Gebrauch weniger aufweicht, ist nicht belegt. ' +
+          'Gesicht: Jede Seife hat pH 9–10. Wer dort gereizt reagiert, wäscht morgens besser nur mit Wasser.',
+        input: {
+          totalFat: 1000,
+          lyeType: 'NaOH',
+          lyePurity: 100,
+          superfat: 7,
+          water: { mode: 'concentration', value: 33 },
+          fats: [
+            { fatId: 'shea', percent: 35 },
+            { fatId: 'olive', percent: 25 },
+            { fatId: 'babassu', percent: 18 },
+            { fatId: 'cocoa', percent: 15 },
+            { fatId: 'castor', percent: 7 },
+          ],
+          additives: [citrate],
+        },
+      },
+      {
         name: 'Körperseife heiß',
         description: 'Gleiche Fettmischung, heiß verseift: nach etwa einer Woche benutzbar, Avocadoöl als Überfettung nach dem Kochen.',
         profileId: 'body-sensitive',

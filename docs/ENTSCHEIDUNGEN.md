@@ -37,6 +37,12 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
 - **Haltbarkeit offener Fette** (`shelfLife.ts`): Faustregel aus PUFA-Anteil (24 bis 6 Monate), Chemie dahinter belegt,
   Monatswerte nicht.
 - Kennzahlen (Härte, Reinigung usw.) nach SoapCalc-Konvention sind Heuristiken, linear in den Fettanteilen.
+- **Seife am Waschbecken** (Hände, Gesicht; 10.11.2026): keine eigene Seifenart, sondern Variante der Körperseife
+  („Körperseife Waschbecken“, Migration v11). Die Haut ist dieselbe, anders ist die Beanspruchung des Stücks (oft nass).
+  Deshalb gleiche Laurinsäure, aber mehr Palmitin-/Stearinsäure (Shea 35, Kakaobutter 15) und weniger Olivenöl (25):
+  Ölsäure-Seife löst sich gut und wird schleimig. „Härte“ nach SoapCalc taugt dafür nur bedingt, weil sie die gut
+  lösliche Laurinsäure mitzählt. Abtropfende Schale, kleine Stücke (75 g) und lange Reife sind Erfahrungswerte.
+  Überfettung bleibt 7 % (6 % gäbe weniger Film im Becken, ist aber nur eine Einschätzung).
 
 ## Produkt- und UX-Entscheidungen
 
@@ -175,7 +181,7 @@ gilt; hier steht, warum etwas so ist und was wir dabei gelernt haben. Neue Erken
   (`findDuplicateRecipes`). Anlass: Nach Textänderungen an den Vorlagen tauchten auf einem neuen Handy die Rezepte
   doppelt auf, und „lokal gewinnt“ hätte bearbeitete Grundseifen mit gleicher Kennung überschreiben können.
 - Sync-API: Kennungen ≤ 100 Zeichen (Import-Kennungen hashen!), Datensätze ≤ 4 MB; zu große/lange Datensätze werden
-  übersprungen und gemeldet statt den Abgleich zu blockieren. Migrationen über Dexie-Versionen (aktuell 8).
+  übersprungen und gemeldet statt den Abgleich zu blockieren. Migrationen über Dexie-Versionen (aktuell 11).
 - Große Kataloge (≈ 4600 Artikel): Listen gruppieren und kürzen („Meine Artikel“), teure Berechnungen nur bei
   Datenänderung (Live-Query-Objekte als Memo-Abhängigkeit).
 - Rasterzellen brauchen `min-width: 0` (global in `index.css`), sonst scrollt das Handy seitlich.
