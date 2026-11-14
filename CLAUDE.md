@@ -48,6 +48,8 @@ Kommunikation auf **Deutsch**, Code-Kommentare und UI-Texte auf Deutsch. Antwort
 ## Betrieb
 
 - Repo `olisym/olisoap` (öffentlich – **keine persönlichen Daten, Zugangsdaten oder gescrapten Kataloge committen**).
+- Commits laufen als `olisym` mit der GitHub-noreply-Adresse (lokale git-Config) – nie mit privater Mail oder Klarnamen,
+  auch nicht in Texten. Der globale pre-push-Hook (`~/.config/git/hooks/pre-push`) prüft jeden Push auf persönliche Daten.
 - Push auf `main` → GitHub Actions: Tests, Build, GitHub Pages (`/olisoap/`) **und** Branch `deploy` (Basis `/`).
 - Produktiv: `https://olisoap.error13.de`, Netcup Webhosting 1000, Plesk Git-Bereitstellung zieht `deploy` nach `httpdocs`.
   PHP 8.5, MySQL mit Tabellenpräfix `olisoap_`. `open_basedir` = `{DOCROOT}` → Konfiguration liegt in
